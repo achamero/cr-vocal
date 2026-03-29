@@ -349,12 +349,19 @@ Objet saisi : "${sujetSaisi||'non précisé'}".
 TRANSCRIPTION :
 ${texte}
 
-Génère un JSON avec ces clés (toutes en string sauf actions et agenda) :
+Génère un JSON avec ces clés (toutes en string sauf points, actions et agenda) :
 
 - titre : si l'objet saisi est vide, formule un titre clair et concis à partir du contenu. Sinon reprends l'objet saisi.
 - participants : liste complète des participants (ceux indiqués + ceux identifiés dans la transcription), séparés par des virgules, en string.
 - odj : résumé du contexte et de l'ordre du jour (2-4 phrases).
-- points : points abordés, string, items séparés par \\n, préfixe "• ".
+- points : tableau JSON de points abordés. Chaque élément est un objet avec :
+  * titre : intitulé court du point (string)
+  * contexte : contexte ou situation de départ (string, omis si absent)
+  * irritant : problème ou difficulté soulevé (string, omis si absent)
+  * besoin : besoin exprimé ou attendu (string, omis si absent)
+  * propositions : propositions ou pistes évoquées (string, omis si absent)
+  * saillants : points saillants ou éléments clés à retenir (string, omis si absent)
+  Ne génère que les sous-clés réellement présentes dans la transcription. Si aucun détail : juste {titre}.
 - decisions : décisions prises, string, items séparés par \\n, préfixe "• ". Si aucune : "Aucune décision formelle."
 - actions : tableau JSON d'objets {qui, quoi, quand}. "qui" = responsable, "quoi" = action, "quand" = échéance ou délai estimé. Si aucune action : tableau vide [].
 - agenda : tableau JSON d'objets {date, jalon}. "date" = temporalité (ex: "Semaine du 7 avril", "Fin avril", "T3 2026", "À définir"), "jalon" = description de la prochaine étape ou du prochain jalon. Si aucun : tableau vide [].
@@ -377,7 +384,7 @@ JSON brut uniquement, sans markdown, sans backticks.`;
     // Affichage
     document.getElementById('c-odj').textContent=toStr(crData.odj);
     document.getElementById('c-part').textContent=toStr(crData.participants);
-    bullets('c-pts',toStr(crData.points));
+    renderPoints('c-pts', crData.points||[]);
     bullets('c-dec',toStr(crData.decisions));
 
     // Tableau actions
@@ -401,6 +408,25 @@ function bullets(id,text){
   const str=toStr(text);
   if(str.includes('•')) el.innerHTML='<ul>'+str.split('\n').filter(l=>l.trim()).map(l=>`<li>${l.replace(/^•\s*/,'')}</li>`).join('')+'</ul>';
   else el.textContent=str;
+}
+
+function renderPoints(id, points){
+  const el=document.getElementById(id);
+  if(!points||!points.length){el.innerHTML='<p style="color:var(--muted);font-style:italic;font-size:14px">Aucun point identifié.</p>';return;}
+  const labels={contexte:'Contexte',irritant:'Irritant',besoin:'Besoin',propositions:'Propositions',saillants:'Points saillants'};
+  let html='';
+  points.forEach((p,i)=>{
+    const hasDetails=p.contexte||p.irritant||p.besoin||p.propositions||p.saillants;
+    html+=`<div style="margin-bottom:${i<points.length-1?'14px':'0'};padding-bottom:${i<points.length-1?'14px':'0'};border-bottom:${i<points.length-1?'1px dashed var(--border)':'none'}">`;
+    html+=`<div style="font-weight:600;font-size:14px;margin-bottom:${hasDetails?'8px':'0'}">${esc(p.titre||'—')}</div>`;
+    if(hasDetails){
+      Object.entries(labels).forEach(([key,label])=>{
+        if(p[key]) html+=`<div style="display:flex;gap:8px;margin-bottom:4px;font-size:13px"><span style="min-width:110px;font-weight:600;color:var(--accent);font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding-top:2px">${label}</span><span style="color:var(--ink);line-height:1.6">${esc(p[key])}</span></div>`;
+      });
+    }
+    html+='</div>';
+  });
+  el.innerHTML=html;
 }
 
 function renderActionTable(actions){
@@ -484,7 +510,21 @@ async function exportDocx(){
         new TextRun({text:part,size:22,color:'7A7570'})
       ],spacing:{after:360}}),
       h2('Objet & Contexte'),new Paragraph({text:toStr(crData.odj),spacing:{after:180}}),
-      h2('Points abordés'),...buls(crData.points),new Paragraph({text:'',spacing:{after:80}}),
+      h2('Points abordés'),
+      ...(()=>{
+        const pts=crData.points||[];
+        if(!pts.length) return [new Paragraph({text:'Aucun point identifié.',spacing:{after:80}})];
+        const rows=[];
+        const labels={contexte:'Contexte',irritant:'Irritant',besoin:'Besoin',propositions:'Propositions',saillants:'Points saillants'};
+        pts.forEach(p=>{
+          rows.push(new Paragraph({children:[new TextRun({text:p.titre||'—',bold:true,size:24})],spacing:{before:120,after:60}}));
+          Object.entries(labels).forEach(([key,label])=>{
+            if(p[key]) rows.push(new Paragraph({children:[new TextRun({text:label+' : ',bold:true,size:22,color:'C8440A'}),new TextRun({text:p[key],size:22})],spacing:{after:40},indent:{left:200}}));
+          });
+        });
+        return rows;
+      })(),
+      new Paragraph({text:'',spacing:{after:80}}),
       h2('Décisions prises'),...buls(crData.decisions),new Paragraph({text:'',spacing:{after:80}}),
       h2('Actions à mener'),new Paragraph({text:'',spacing:{after:80}}),
       actionsTable,
@@ -569,7 +609,28 @@ async function exportPDF(){
     };
 
     sec('Objet & Contexte',()=>textBlock(crData.odj));
-    sec('Points abordés',()=>textBlock(crData.points));
+    sec('Points abordés',()=>{
+      const pts=crData.points||[];
+      if(!pts.length){pdf.setFont('helvetica','italic');pdf.setFontSize(10);pdf.setTextColor(122,117,112);pdf.text('Aucun point identifié.',PL,y);y+=6;return;}
+      const labels={contexte:'Contexte',irritant:'Irritant',besoin:'Besoin',propositions:'Propositions',saillants:'Points saillants'};
+      pts.forEach((p,i)=>{
+        if(y>268){pdf.addPage();y=20;}
+        pdf.setFont('helvetica','bold');pdf.setFontSize(11);pdf.setTextColor(26,26,31);
+        pdf.text(p.titre||'—',PL,y);y+=6;
+        Object.entries(labels).forEach(([key,label])=>{
+          if(p[key]){
+            if(y>272){pdf.addPage();y=20;}
+            pdf.setFont('helvetica','bold');pdf.setFontSize(9);pdf.setTextColor(200,68,10);
+            pdf.text(label+' :',PL+4,y);
+            pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.setTextColor(26,26,31);
+            const lines=pdf.splitTextToSize(p[key],TW-50);
+            pdf.text(lines[0],PL+40,y);y+=5.5;
+            for(let li=1;li<lines.length;li++){if(y>278){pdf.addPage();y=20;}pdf.text(lines[li],PL+40,y);y+=5.5;}
+          }
+        });
+        if(i<pts.length-1){pdf.setDrawColor(220,215,206);pdf.line(PL,y+1,PL+TW,y+1);y+=5;}
+      });
+    });
     sec('Décisions prises',()=>textBlock(crData.decisions));
     sec('Actions à mener',()=>tableBlock(
       ['Qui','Quoi','Quand'],
