@@ -1,8 +1,23 @@
-export async function onRequestPost(context) {
+export async function onRequest(context) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Content-Type': 'application/json',
   };
+
+  if (context.request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
+  }
+
+  if (context.request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Méthode non autorisée' }), { status: 405, headers });
+  }
 
   try {
     const { base64, mimeType, filename } = await context.request.json();
@@ -33,7 +48,9 @@ export async function onRequestPost(context) {
     const rawText = await response.text();
     let data;
     try { data = JSON.parse(rawText); }
-    catch(e) { return new Response(JSON.stringify({ error: 'Réponse Groq invalide : ' + rawText.substring(0, 200) }), { status: 500, headers }); }
+    catch(e) {
+      return new Response(JSON.stringify({ error: 'Réponse Groq invalide : ' + rawText.substring(0, 200) }), { status: 500, headers });
+    }
 
     if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
 
@@ -42,15 +59,4 @@ export async function onRequestPost(context) {
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers });
   }
-}
-
-export async function onRequestOptions() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
 }
