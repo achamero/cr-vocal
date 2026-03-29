@@ -415,7 +415,7 @@ JSON brut uniquement, sans markdown, sans backticks.`;
     }
 
     document.getElementById('crWrap').classList.add('on');
-    document.getElementById('exportRow').classList.add('on');
+    
     document.getElementById('btnWord').disabled=false;
     document.getElementById('btnPDF').disabled=false;
     showStatus('✓ Compte rendu structuré.','ok');
@@ -683,7 +683,7 @@ function clearTx(){finalTx='';lastFinalSegment='';document.getElementById('tx').
 function resetAll(){
   stopRec();clearTx();crData=null;audioFile=null;
   document.getElementById('crWrap').classList.remove('on');
-  document.getElementById('exportRow').classList.remove('on');
+  
   document.getElementById('btnWord').disabled=true;
   document.getElementById('btnPDF').disabled=true;
   document.getElementById('status').classList.remove('on');
