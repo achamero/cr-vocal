@@ -244,7 +244,7 @@ async function transcribeAudio(){
     const mtMap={mp3:'audio/mpeg',aac:'audio/aac',m4a:'audio/mp4',mp4:'audio/mp4',wav:'audio/wav',ogg:'audio/ogg',webm:'audio/webm'};
     const mt=mtMap[ext]||audioFile.file.type||'audio/mpeg';
 
-    const r=await fetch('/functions/transcrire',{
+    const r=await fetch('/transcrire',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({base64:b64,mimeType:mt,filename:audioFile.file.name})
     });
@@ -362,7 +362,7 @@ Génère un JSON avec ces clés (toutes en string sauf actions et agenda) :
 JSON brut uniquement, sans markdown, sans backticks.`;
 
   try{
-    const r=await fetch('/functions/structurer',{
+    const r=await fetch('/structurer',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({prompt})
     });
