@@ -107,7 +107,6 @@
 <header>
   <div class="header-top">
     <h1>CR Vocal</h1>
-    <span class="badge">GROQ · GRATUIT</span>
   </div>
   <div class="author">Conçu et réalisé par <em>A. Cham</em> &nbsp;·&nbsp; <span style="opacity:.7">© 2026</span></div>
 </header>
@@ -120,7 +119,7 @@
       <div class="full"><label>Objet de la réunion <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(optionnel — sera déduit si vide)</span></label><input type="text" id="sujet" placeholder="Ex : Comité architecture — Sprint 14"></div>
       <div><label>Date</label><input type="date" id="date"></div>
       <div><label>Durée <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(évaluée si vide)</span></label><input type="text" id="duree" placeholder="Ex : 1h30"></div>
-      <div class="full"><label>Participants</label><input type="text" id="participants" placeholder="A., B., C."></div>
+      <div class="full"><label>Participants <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(évalués si vide)</span></label><input type="text" id="participants" placeholder="A., B., C."></div>
     </div>
   </div>
 
@@ -161,7 +160,7 @@
       <div class="card-title">✍️ Transcription <span class="chip chip-b">BRUT</span></div>
       <button class="btn btn-light" style="flex:0;padding:5px 11px;font-size:12px" onclick="clearTx()">Effacer</button>
     </div>
-    <textarea id="tx" placeholder="La transcription apparaîtra ici…&#10;&#10;Vous pouvez aussi coller du texte manuellement." rows="6"></textarea>
+    <textarea id="tx" placeholder="La transcription apparaîtra ici…&#10;&#10;Vous pouvez aussi coller du texte manuellement." rows="6" oninput="onTxInput()"></textarea>
     <div class="interim" id="interim"></div>
   </div>
 
@@ -210,6 +209,14 @@ let finalTx='',crData=null,audioFile=null;
 // Dédoublonnage Android : garder trace du dernier texte final ajouté
 let lastFinalSegment='';
 
+function onTxInput(){
+  const has=document.getElementById('tx').value.trim().length>0;
+  if(has){
+    document.getElementById('btnWord').disabled=false;
+    document.getElementById('btnPDF').disabled=false;
+  }
+}
+
 function switchTab(t){
   document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('on',(t==='mic'&&i===0)||(t==='file'&&i===1)));
   document.getElementById('p-mic').classList.toggle('on',t==='mic');
@@ -225,6 +232,12 @@ function prepFile(file){
   document.getElementById('fileNm').textContent=`${file.name} — ${mo} Mo`;
   document.getElementById('fileRow').classList.add('on');
   audioFile={file};
+  // Ajuster la date à partir de la date du fichier audio
+  if(file.lastModified){
+    const d=new Date(file.lastModified);
+    const iso=d.toISOString().split('T')[0];
+    document.getElementById('date').value=iso;
+  }
 }
 
 async function transcribeAudio(){
@@ -249,7 +262,10 @@ async function transcribeAudio(){
     if(d.error) throw new Error(d.error);
     if(!d.text) throw new Error('Transcription vide');
     document.getElementById('tx').value=d.text;
-    showStatus('✓ Transcription terminée.','ok');
+    // Activer les boutons export pour le transcript brut
+    document.getElementById('btnWord').disabled=false;
+    document.getElementById('btnPDF').disabled=false;
+    showStatus('✓ Transcription terminée. Vous pouvez exporter le transcript ou structurer avec IA.','ok');
   }catch(e){
     showStatus('Erreur transcription : '+e.message,'err');
   }finally{
@@ -281,6 +297,8 @@ function buildRecog(){
           lastFinalSegment=seg;
         }
         document.getElementById('tx').value=finalTx;
+        document.getElementById('btnWord').disabled=false;
+        document.getElementById('btnPDF').disabled=false;
       } else {
         interim+=e.results[i][0].transcript;
       }
@@ -477,7 +495,31 @@ function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 
 // ── Export DOCX ──
 async function exportDocx(){
-  if(!crData){showStatus('Structurez d\'abord le compte rendu.','err');return;}
+  const texte=document.getElementById('tx').value.trim();
+  if(!texte){showStatus('Aucun contenu à exporter.','err');return;}
+  // Mode transcript brut si CR pas encore structuré
+  if(!crData){
+    showStatus('<span class="spin"></span>Export transcript Word…','load');
+    try{
+      let lib=getDocxLib();
+      if(!lib){await new Promise(r=>setTimeout(r,1200));lib=getDocxLib();}
+      if(!lib) throw new Error('Librairie Word non chargée — rechargez la page.');
+      const{Document,Packer,Paragraph,TextRun,HeadingLevel}=lib;
+      const sujet=document.getElementById('sujet').value||'Transcription';
+      const date=document.getElementById('date').value||'';
+      const dateF=date?new Date(date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):'';
+      const doc=new Document({sections:[{properties:{page:{margin:{top:1134,bottom:1134,left:1134,right:1134}}},children:[
+        new Paragraph({children:[new TextRun({text:sujet,bold:true,size:36,font:'Georgia'})],spacing:{after:80}}),
+        new Paragraph({children:[new TextRun({text:'Date : ',bold:true,size:22,color:'7A7570'}),new TextRun({text:dateF,size:22,color:'7A7570'})],spacing:{after:300}}),
+        new Paragraph({text:texte,spacing:{after:200}})
+      ]}]});
+      const blob=await Packer.toBlob(doc);
+      dl(blob,'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        `Transcript_${sujet.replace(/[^a-zA-ZÀ-ÿ0-9]/g,'_').substring(0,40)}_${date||'sans_date'}.docx`);
+      showStatus('✓ Transcript Word téléchargé.','ok');
+    }catch(e){showStatus('Erreur Word : '+e.message,'err');}
+    return;
+  }
   showStatus('<span class="spin"></span>Génération Word…','load');
   try{
     let lib=getDocxLib();
@@ -575,7 +617,36 @@ async function exportDocx(){
 
 // ── Export PDF ──
 async function exportPDF(){
-  if(!crData){showStatus('Structurez d\'abord le compte rendu.','err');return;}
+  const texte=document.getElementById('tx').value.trim();
+  if(!texte){showStatus('Aucun contenu à exporter.','err');return;}
+  // Mode transcript brut si CR pas encore structuré
+  if(!crData){
+    showStatus('<span class="spin"></span>Export transcript PDF…','load');
+    try{
+      const JsPDF=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
+      if(!JsPDF) throw new Error('Librairie PDF non chargée. Rechargez la page.');
+      const sujet=document.getElementById('sujet').value||'Transcription';
+      const date=document.getElementById('date').value||'';
+      const dateF=date?new Date(date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):'';
+      const pdf=new JsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+      const PL=20,TW=170;let y=24;
+      pdf.setFont('helvetica','bold');pdf.setFontSize(16);pdf.setTextColor(26,26,31);
+      pdf.text(sujet,PL,y);y+=8;
+      pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.setTextColor(122,117,112);
+      pdf.text(`Date : ${dateF}`,PL,y);y+=8;
+      pdf.setDrawColor(200,195,188);pdf.line(PL,y,190,y);y+=8;
+      pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.setTextColor(26,26,31);
+      texte.split('\n').forEach(line=>{
+        const wrapped=pdf.splitTextToSize(line||' ',TW);
+        wrapped.forEach(l=>{if(y>278){pdf.addPage();y=20;}pdf.text(l,PL,y);y+=5.5;});
+      });
+      pdf.setFont('helvetica','italic');pdf.setFontSize(8);pdf.setTextColor(170,170,170);
+      pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`,190,290,{align:'right'});
+      pdf.save(`Transcript_${sujet.replace(/[^a-zA-ZÀ-ÿ0-9]/g,'_').substring(0,40)}_${date||'sans_date'}.pdf`);
+      showStatus('✓ Transcript PDF téléchargé.','ok');
+    }catch(e){showStatus('Erreur PDF : '+e.message,'err');}
+    return;
+  }
   showStatus('<span class="spin"></span>Génération PDF…','load');
   try{
     const JsPDF=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
