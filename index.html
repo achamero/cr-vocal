@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CR Vocal</title>
+<script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+  :root{--ink:#1a1a1f;--paper:#f5f2ec;--cream:#ede9e0;--accent:#c8440a;--accent-light:#f0c4b0;--muted:#7a7570;--border:#d4cfc6;--red:#e53e3e}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;display:flex;flex-direction:column}
+
+  header{padding:14px 24px 10px;border-bottom:1px solid var(--border);background:var(--paper);position:sticky;top:0;z-index:10}
+  .header-top{display:flex;align-items:baseline;gap:10px;margin-bottom:3px}
+  header h1{font-family:'DM Serif Display',serif;font-size:21px}
+  .badge{font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);background:var(--accent-light);padding:2px 8px;border-radius:20px}
+  .author{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:0.3px}
+  .author em{font-style:normal;color:var(--accent);font-weight:500}
+
+  .container{flex:1;padding:20px 24px 120px;max-width:680px;margin:0 auto;width:100%}
+  .card{background:white;border:1px solid var(--border);border-radius:12px;margin-bottom:16px;overflow:hidden}
+  .card-pad{padding:16px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .full{grid-column:1/-1}
+  label{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+  input[type=text],input[type=date],input[type=password]{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:'DM Sans',sans-serif;font-size:14px;background:var(--paper);color:var(--ink);outline:none}
+  input:focus{border-color:var(--accent)}
+
+  .tabs{display:flex;gap:8px;margin-bottom:14px}
+  .tab{flex:1;padding:10px;border-radius:10px;border:2px solid var(--border);background:white;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;text-align:center;transition:all .2s}
+  .tab.on{border-color:var(--ink);color:var(--ink);background:var(--cream)}
+  .panel{display:none}.panel.on{display:block}
+
+  .mic-wrap{text-align:center;padding:20px}
+  .rec-btn{width:76px;height:76px;border-radius:50%;border:3px solid var(--ink);background:white;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px;transition:all .2s}
+  .rec-btn:hover{transform:scale(1.05)}
+  .rec-btn.on{border-color:var(--red);background:#fff5f5;animation:pulse 1.5s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(229,62,62,.3)}50%{box-shadow:0 0 0 10px rgba(229,62,62,0)}}
+  .dot{width:26px;height:26px;border-radius:50%;background:var(--red);transition:all .2s}
+  .rec-btn.on .dot{border-radius:4px;width:20px;height:20px}
+  .rec-lbl{font-size:13px;color:var(--muted);font-weight:500}
+  .rec-lbl.on{color:var(--red);font-weight:600}
+  .timer{font-family:'DM Mono',monospace;font-size:17px;margin-top:5px;min-height:24px}
+  .mic-note{font-size:12px;color:var(--muted);margin-top:10px;background:var(--cream);border-radius:8px;padding:8px 12px;text-align:left;line-height:1.5}
+
+  .drop-zone{border:2px dashed var(--border);border-radius:10px;margin:14px;padding:26px 16px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+  .drop-zone:hover,.drop-zone.over{border-color:var(--accent);background:#fff8f5}
+  .drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .drop-zone p{font-size:14px;color:var(--muted);line-height:1.6}
+  .drop-zone strong{color:var(--ink)}
+  .file-row{display:none;padding:8px 14px 14px;align-items:center;gap:10px}
+  .file-row.on{display:flex}
+  .file-nm{flex:1;font-family:'DM Mono',monospace;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .btn-sm{padding:8px 14px;border-radius:8px;border:none;background:var(--ink);color:white;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .btn-sm:hover{background:#2d2d35}.btn-sm:disabled{opacity:.4;cursor:not-allowed}
+
+  .card-hd{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .card-title{font-family:'DM Serif Display',serif;font-size:15px;display:flex;align-items:center;gap:8px}
+  .chip{font-family:'DM Mono',monospace;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500}
+  .chip-b{background:#dbeafe;color:#1e40af}.chip-g{background:#d1fae5;color:#065f46}
+  textarea{width:100%;border:none;padding:13px 16px;font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.7;color:var(--ink);background:white;resize:vertical;outline:none;min-height:100px}
+  textarea::placeholder{color:var(--border);font-style:italic}
+  .interim{padding:9px 16px;font-size:13px;color:var(--muted);font-style:italic;border-top:1px dashed var(--border);min-height:36px;font-family:'DM Mono',monospace}
+
+  .row{display:flex;gap:10px;margin-bottom:16px}
+  .btn{flex:1;padding:13px 16px;border-radius:10px;border:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn-dark{background:var(--ink);color:white}.btn-dark:hover:not(:disabled){background:#2d2d35;transform:translateY(-1px)}
+  .btn-light{background:var(--cream);color:var(--ink);border:1px solid var(--border)}.btn-light:hover:not(:disabled){background:var(--border)}
+  .btn-red{background:var(--accent);color:white}.btn-red:hover:not(:disabled){background:#a8380a;transform:translateY(-1px)}
+  .btn-pdf{background:#1e3a5f;color:white}.btn-pdf:hover:not(:disabled){background:#162d4a;transform:translateY(-1px)}
+
+  .status{padding:10px 14px;border-radius:8px;font-size:13px;font-weight:500;margin-bottom:14px;display:none;line-height:1.5}
+  .status.on{display:block}
+  .s-load{background:#fef3c7;color:#92400e}.s-ok{background:#d1fae5;color:#065f46}.s-err{background:#fee2e2;color:#991b1b}
+  .spin{display:inline-block;width:11px;height:11px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:sp .6s linear infinite;margin-right:5px;vertical-align:middle}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  .cr-wrap{display:none}.cr-wrap.on{display:block}
+  .cr-blk{padding:13px 16px}.cr-blk+.cr-blk{border-top:1px solid var(--border)}
+  .cr-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:7px}
+  .cr-val{font-size:14px;line-height:1.7}.cr-val ul{padding-left:18px}.cr-val li{margin-bottom:3px}
+
+  /* Tableau actions */
+  .action-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+  .action-table th{background:var(--cream);padding:7px 10px;text-align:left;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);border-bottom:2px solid var(--border)}
+  .action-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  .action-table tr:last-child td{border-bottom:none}
+  .action-table tr:hover td{background:#fafafa}
+
+  /* Tableau agenda */
+  .agenda-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+  .agenda-table th{background:#f0f4ff;padding:7px 10px;text-align:left;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:#4a5a8a;border-bottom:2px solid #c7d2fe}
+  .agenda-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  .agenda-table tr:last-child td{border-bottom:none}
+  .agenda-table td:first-child{font-family:'DM Mono',monospace;font-size:12px;color:var(--accent);white-space:nowrap}
+
+  .export-row{display:none;gap:10px;margin-bottom:16px}.export-row.on{display:flex}
+  .bottom{position:fixed;bottom:0;left:0;right:0;background:var(--paper);border-top:1px solid var(--border);padding:12px 24px;display:flex;gap:10px}
+  @media(max-width:480px){.grid2{grid-template-columns:1fr}.container{padding:14px 14px 120px}header{padding:12px 16px 8px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <h1>CR Vocal</h1>
+    <span class="badge">GROQ · GRATUIT</span>
+  </div>
+  <div class="author">Conçu et réalisé par <em>A. Cham</em> &nbsp;·&nbsp; <span style="opacity:.7">© 2026</span></div>
+</header>
+
+<div class="container">
+
+  <!-- Clé API -->
+  <div class="card card-pad" id="keySection">
+    <div class="full">
+      <label>🔑 Clé API Groq <span style="font-size:10px;color:var(--muted);text-transform:none;letter-spacing:0">(stockée localement, jamais envoyée ailleurs)</span></label>
+      <div style="display:flex;gap:8px">
+        <input type="password" id="apiKey" placeholder="gsk_..." style="flex:1">
+        <button class="btn-sm" onclick="saveKey()">Sauver</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:5px">Clé gratuite sur <a href="https://console.groq.com" target="_blank" style="color:var(--accent)">console.groq.com</a></div>
+    </div>
+  </div>
+
+  <!-- Métadonnées -->
+  <div class="card card-pad">
+    <div class="grid2">
+      <div class="full"><label>Objet de la réunion <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(optionnel — sera déduit si vide)</span></label><input type="text" id="sujet" placeholder="Ex : Comité architecture — Sprint 14"></div>
+      <div><label>Date</label><input type="date" id="date"></div>
+      <div><label>Participants</label><input type="text" id="participants" placeholder="A., B., C."></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" onclick="switchTab('mic')">🎙 Dictée micro</button>
+    <button class="tab" onclick="switchTab('file')">📁 Fichier audio</button>
+  </div>
+
+  <div class="panel on card" id="p-mic">
+    <div class="mic-wrap">
+      <button class="rec-btn" id="recBtn" onclick="toggleRec()"><div class="dot"></div></button>
+      <div class="rec-lbl" id="recLbl">Appuyer pour enregistrer</div>
+      <div class="timer" id="timer"></div>
+      <div class="mic-note">⚠️ Nécessite <strong>Chrome</strong>. Sur Android : parlez par <strong>phrases courtes</strong> et marquez une pause entre chaque pour éviter les répétitions.</div>
+    </div>
+  </div>
+
+  <div class="panel card" id="p-file">
+    <div class="drop-zone" id="dropZone"
+         ondragover="event.preventDefault();this.classList.add('over')"
+         ondragleave="this.classList.remove('over')"
+         ondrop="onDrop(event)">
+      <input type="file" id="audioIn" accept="audio/*,.mp3,.aac,.m4a,.wav,.ogg,.webm,.mp4" onchange="onFileSelect(event)">
+      <div style="font-size:30px;margin-bottom:8px">🎵</div>
+      <p><strong>Glisser un fichier audio</strong><br>ou appuyer pour choisir</p>
+      <p style="font-size:12px;margin-top:6px">MP3 · AAC · M4A · MP4 · WAV · jusqu'à <strong>25 Mo</strong></p>
+    </div>
+    <div class="file-row" id="fileRow">
+      <span class="file-nm" id="fileNm"></span>
+      <button class="btn-sm" id="btnTranscribe" onclick="transcribeAudio()">Transcrire →</button>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="card">
+    <div class="card-hd">
+      <div class="card-title">✍️ Transcription <span class="chip chip-b">BRUT</span></div>
+      <button class="btn btn-light" style="flex:0;padding:5px 11px;font-size:12px" onclick="clearTx()">Effacer</button>
+    </div>
+    <textarea id="tx" placeholder="La transcription apparaîtra ici…&#10;&#10;Vous pouvez aussi coller du texte manuellement." rows="6"></textarea>
+    <div class="interim" id="interim"></div>
+  </div>
+
+  <div class="row">
+    <button class="btn btn-dark" id="btnStruct" onclick="structurer()">✨ Structurer avec IA</button>
+  </div>
+
+  <div class="card cr-wrap" id="crWrap">
+    <div class="card-hd"><div class="card-title">📋 Compte Rendu <span class="chip chip-g">IA</span></div></div>
+    <div class="cr-blk"><div class="cr-lbl">🎯 Objet &amp; contexte</div><div class="cr-val" id="c-odj"></div></div>
+    <div class="cr-blk"><div class="cr-lbl">👥 Participants</div><div class="cr-val" id="c-part"></div></div>
+    <div class="cr-blk"><div class="cr-lbl">💬 Points abordés</div><div class="cr-val" id="c-pts"></div></div>
+    <div class="cr-blk"><div class="cr-lbl">✅ Décisions</div><div class="cr-val" id="c-dec"></div></div>
+    <div class="cr-blk"><div class="cr-lbl">🔜 Actions à mener</div><div id="c-act"></div></div>
+    <div class="cr-blk"><div class="cr-lbl">📌 Prochaine étape &amp; jalons</div><div id="c-agenda"></div></div>
+  </div>
+
+  <div class="export-row" id="exportRow">
+    <button class="btn btn-red" onclick="exportDocx()">⬇ Word .docx</button>
+    <button class="btn btn-pdf" onclick="exportPDF()">⬇ PDF</button>
+  </div>
+
+</div>
+
+<div class="bottom">
+  <button class="btn btn-light" onclick="resetAll()" style="flex:0.5">🔄 Nouveau</button>
+  <button class="btn btn-red" id="btnWord" onclick="exportDocx()" disabled>⬇ Word</button>
+  <button class="btn btn-pdf" id="btnPDF" onclick="exportPDF()" disabled>⬇ PDF</button>
+</div>
+
+<script>
+// ── Clé API ──
+function getKey(){return localStorage.getItem('groq_key')||'';}
+function saveKey(){
+  const k=document.getElementById('apiKey').value.trim();
+  if(!k){showStatus('Entrez votre clé API Groq.','err');return;}
+  localStorage.setItem('groq_key',k);
+  document.getElementById('apiKey').value='';
+  document.getElementById('apiKey').placeholder='••••••••• (clé enregistrée)';
+  showStatus('✓ Clé API sauvegardée.','ok');
+}
+window.addEventListener('load',()=>{
+  if(getKey()) document.getElementById('apiKey').placeholder='••••••••• (clé enregistrée)';
+  document.getElementById('date').value=new Date().toISOString().split('T')[0];
+});
+
+// ── Helpers ──
+function toStr(val){
+  if(!val) return '';
+  if(Array.isArray(val)) return val.map(v=>String(v)).join('\n');
+  return String(val);
+}
+
+function getDocxLib(){
+  if(typeof window.docx!=='undefined'&&window.docx.Document) return window.docx;
+  if(typeof docx!=='undefined'&&docx.Document) return docx;
+  return null;
+}
+
+let recog=null,isRec=false,timerInt=null,secs=0;
+let finalTx='',crData=null,audioFile=null;
+// Dédoublonnage Android : garder trace du dernier texte final ajouté
+let lastFinalSegment='';
+
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('on',(t==='mic'&&i===0)||(t==='file'&&i===1)));
+  document.getElementById('p-mic').classList.toggle('on',t==='mic');
+  document.getElementById('p-file').classList.toggle('on',t==='file');
+}
+
+// ── Upload audio ──
+function onDrop(e){e.preventDefault();document.getElementById('dropZone').classList.remove('over');const f=e.dataTransfer.files[0];if(f)prepFile(f);}
+function onFileSelect(e){const f=e.target.files[0];if(f)prepFile(f);}
+function prepFile(file){
+  const mo=(file.size/1024/1024).toFixed(1);
+  if(file.size>25*1024*1024){showStatus(`Fichier trop grand (${mo} Mo, max 25 Mo).`,'err');return;}
+  document.getElementById('fileNm').textContent=`${file.name} — ${mo} Mo`;
+  document.getElementById('fileRow').classList.add('on');
+  audioFile={file};
+}
+
+async function transcribeAudio(){
+  if(!audioFile) return;
+  const key=getKey();
+  if(!key){showStatus('Entrez et sauvegardez votre clé API Groq en haut.','err');return;}
+  const btn=document.getElementById('btnTranscribe');
+  btn.disabled=true; btn.textContent='⏳…';
+  showStatus('<span class="spin"></span>Transcription Whisper en cours…','load');
+  try{
+    const form=new FormData();
+    form.append('file',audioFile.file,audioFile.file.name);
+    form.append('model','whisper-large-v3-turbo');
+    form.append('language','fr');
+    form.append('response_format','json');
+    const r=await fetch('https://api.groq.com/openai/v1/audio/transcriptions',{
+      method:'POST',headers:{'Authorization':`Bearer ${key}`},body:form
+    });
+    const d=await r.json();
+    if(d.error) throw new Error(typeof d.error==='string'?d.error:(d.error.message||JSON.stringify(d.error)));
+    if(!d.text) throw new Error('Transcription vide');
+    document.getElementById('tx').value=d.text;
+    showStatus('✓ Transcription terminée.','ok');
+  }catch(e){
+    showStatus('Erreur transcription : '+e.message,'err');
+  }finally{
+    btn.disabled=false; btn.textContent='Transcrire →';
+  }
+}
+
+// ── Micro — correction répétitions Android ──
+// Sur Android, SpeechRecognition redémarre et rejoue les résultats intermédiaires comme finals.
+// Solution : on ne retient que les segments vraiment nouveaux (non déjà présents dans finalTx).
+function buildRecog(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR) return null;
+  const r=new SR();
+  r.continuous=true;
+  r.interimResults=true;
+  r.lang='fr-FR';
+  // Sur Android, maxAlternatives=1 et on désactive continuous si nécessaire
+  r.maxAlternatives=1;
+
+  r.onresult=e=>{
+    let interim='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal){
+        const seg=e.results[i][0].transcript.trim();
+        // Vérifier que ce segment n'est pas déjà présent à la fin de finalTx (dédoublonnage Android)
+        if(seg && !finalTx.trimEnd().endsWith(seg)){
+          finalTx+=seg+' ';
+          lastFinalSegment=seg;
+        }
+        document.getElementById('tx').value=finalTx;
+      } else {
+        interim+=e.results[i][0].transcript;
+      }
+    }
+    document.getElementById('interim').textContent=interim?`⏳ ${interim}`:'';
+  };
+
+  r.onerror=e=>{
+    const m={'not-allowed':'Accès micro refusé. Autorisez dans Chrome.','audio-capture':'Aucun micro détecté.','network':'Erreur réseau.'};
+    if(m[e.error]) showStatus(m[e.error],'err');
+    if(e.error!=='no-speech'&&e.error!=='aborted') stopRec();
+  };
+
+  r.onend=()=>{
+    if(isRec){
+      // Petit délai avant redémarrage pour éviter les boucles rapides sur Android
+      setTimeout(()=>{if(isRec){try{r.start();}catch(e){}}},300);
+    }
+  };
+  return r;
+}
+
+function toggleRec(){if(isRec)stopRec();else startRec();}
+function startRec(){
+  if(!(window.SpeechRecognition||window.webkitSpeechRecognition)){showStatus('Reconnaissance vocale non dispo. Utilisez Chrome.','err');return;}
+  recog=buildRecog();if(!recog)return;
+  try{recog.start();}catch(e){showStatus('Impossible de démarrer le micro.','err');return;}
+  isRec=true;
+  finalTx=document.getElementById('tx').value;
+  lastFinalSegment='';
+  document.getElementById('recBtn').classList.add('on');
+  document.getElementById('recLbl').textContent='Enregistrement…';
+  document.getElementById('recLbl').classList.add('on');
+  secs=0;
+  timerInt=setInterval(()=>{secs++;const m=String(Math.floor(secs/60)).padStart(2,'0'),s=String(secs%60).padStart(2,'0');document.getElementById('timer').textContent=`${m}:${s}`;},1000);
+}
+function stopRec(){
+  isRec=false;
+  if(recog){try{recog.stop();}catch(e){}recog=null;}
+  clearInterval(timerInt);
+  document.getElementById('recBtn').classList.remove('on');
+  document.getElementById('recLbl').textContent='Appuyer pour reprendre';
+  document.getElementById('recLbl').classList.remove('on');
+  document.getElementById('interim').textContent='';
+}
+
+// ── Structuration ──
+async function structurer(){
+  const texte=document.getElementById('tx').value.trim();
+  if(!texte){showStatus('Veuillez d\'abord enregistrer ou saisir une transcription.','err');return;}
+  const btn=document.getElementById('btnStruct');
+  btn.disabled=true;
+  showStatus('<span class="spin"></span>Structuration en cours…','load');
+  const sujetSaisi=document.getElementById('sujet').value.trim();
+  const date=document.getElementById('date').value||'';
+  const partSaisies=document.getElementById('participants').value.trim();
+
+  const prompt=`Tu es expert en comptes rendus professionnels.
+Réunion du ${date}. Participants initialement indiqués : ${partSaisies||'non précisés'}.
+Objet saisi : "${sujetSaisi||'non précisé'}".
+
+TRANSCRIPTION :
+${texte}
+
+Génère un JSON avec ces clés (toutes en string sauf actions et agenda) :
+
+- titre : si l'objet saisi est vide, formule un titre clair et concis à partir du contenu. Sinon reprends l'objet saisi.
+- participants : liste complète des participants (ceux indiqués + ceux identifiés dans la transcription), séparés par des virgules, en string.
+- odj : résumé du contexte et de l'ordre du jour (2-4 phrases).
+- points : points abordés, string, items séparés par \\n, préfixe "• ".
+- decisions : décisions prises, string, items séparés par \\n, préfixe "• ". Si aucune : "Aucune décision formelle."
+- actions : tableau JSON d'objets {qui, quoi, quand}. "qui" = responsable, "quoi" = action, "quand" = échéance ou délai estimé. Si aucune action : tableau vide [].
+- agenda : tableau JSON d'objets {date, jalon}. "date" = temporalité (ex: "Semaine du 7 avril", "Fin avril", "T3 2026", "À définir"), "jalon" = description de la prochaine étape ou du prochain jalon. Si aucun : tableau vide [].
+
+JSON brut uniquement, sans markdown, sans backticks.`;
+
+  try{
+    const r=await fetch('/.netlify/functions/structurer',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({prompt})
+    });
+    const rawText=await r.text();
+    let d;try{d=JSON.parse(rawText);}catch(e){throw new Error('Réponse serveur invalide');}
+    if(d.error) throw new Error(d.error);
+    crData=JSON.parse(d.text.replace(/```json|```/g,'').trim());
+
+    // Mettre à jour le champ sujet si vide
+    if(!sujetSaisi&&crData.titre) document.getElementById('sujet').value=crData.titre;
+
+    // Affichage
+    document.getElementById('c-odj').textContent=toStr(crData.odj);
+    document.getElementById('c-part').textContent=toStr(crData.participants);
+    bullets('c-pts',toStr(crData.points));
+    bullets('c-dec',toStr(crData.decisions));
+
+    // Tableau actions
+    renderActionTable(crData.actions||[]);
+    // Tableau agenda
+    renderAgendaTable(crData.agenda||[]);
+
+    document.getElementById('crWrap').classList.add('on');
+    document.getElementById('exportRow').classList.add('on');
+    document.getElementById('btnWord').disabled=false;
+    document.getElementById('btnPDF').disabled=false;
+    showStatus('✓ Compte rendu structuré.','ok');
+    setTimeout(()=>document.getElementById('crWrap').scrollIntoView({behavior:'smooth'}),300);
+  }catch(e){
+    showStatus('Erreur structuration : '+e.message,'err');
+  }finally{btn.disabled=false;}
+}
+
+function bullets(id,text){
+  const el=document.getElementById(id);
+  const str=toStr(text);
+  if(str.includes('•')) el.innerHTML='<ul>'+str.split('\n').filter(l=>l.trim()).map(l=>`<li>${l.replace(/^•\s*/,'')}</li>`).join('')+'</ul>';
+  else el.textContent=str;
+}
+
+function renderActionTable(actions){
+  const el=document.getElementById('c-act');
+  if(!actions||!actions.length){el.innerHTML='<p style="font-size:14px;color:var(--muted);font-style:italic">Aucune action identifiée.</p>';return;}
+  let html='<table class="action-table"><thead><tr><th>Qui</th><th>Quoi</th><th>Quand</th></tr></thead><tbody>';
+  actions.forEach(a=>{
+    html+=`<tr><td><strong>${esc(a.qui||'—')}</strong></td><td>${esc(a.quoi||'—')}</td><td style="color:var(--accent);white-space:nowrap">${esc(a.quand||'—')}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  el.innerHTML=html;
+}
+
+function renderAgendaTable(agenda){
+  const el=document.getElementById('c-agenda');
+  if(!agenda||!agenda.length){el.innerHTML='<p style="font-size:14px;color:var(--muted);font-style:italic">Aucun jalon identifié.</p>';return;}
+  let html='<table class="agenda-table"><thead><tr><th>Temporalité</th><th>Jalon</th></tr></thead><tbody>';
+  agenda.forEach(a=>{
+    html+=`<tr><td>${esc(a.date||'—')}</td><td>${esc(a.jalon||'—')}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  el.innerHTML=html;
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── Export DOCX ──
+async function exportDocx(){
+  if(!crData){showStatus('Structurez d\'abord le compte rendu.','err');return;}
+  showStatus('<span class="spin"></span>Génération Word…','load');
+  try{
+    let lib=getDocxLib();
+    if(!lib){await new Promise(r=>setTimeout(r,1200));lib=getDocxLib();}
+    if(!lib) throw new Error('Librairie Word non chargée — rechargez la page.');
+    const{Document,Packer,Paragraph,TextRun,HeadingLevel,AlignmentType,Table,TableRow,TableCell,WidthType,BorderStyle}=lib;
+
+    const sujet=document.getElementById('sujet').value||crData.titre||'Compte Rendu';
+    const date=document.getElementById('date').value||'';
+    const dateF=date?new Date(date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):'';
+    const part=toStr(crData.participants)||document.getElementById('participants').value||'';
+
+    const h2=t=>new Paragraph({text:t,heading:HeadingLevel.HEADING_2,spacing:{before:280,after:100}});
+    const buls=t=>{const s=toStr(t);if(!s)return[];return s.split('\n').filter(l=>l.trim()).map(l=>new Paragraph({text:l.replace(/^•\s*/,''),bullet:{level:0},spacing:{after:60}}));};
+
+    const noBorder={style:BorderStyle.NONE,size:0,color:'FFFFFF'};
+    const cellBorder={top:noBorder,bottom:{style:BorderStyle.SINGLE,size:4,color:'E5E7EB'},left:noBorder,right:noBorder};
+
+    const makeTable=(headers,rows,colWidths)=>{
+      const headerRow=new TableRow({children:headers.map((h,i)=>new TableCell({
+        width:{size:colWidths[i],type:WidthType.PERCENTAGE},
+        shading:{fill:'F3F4F6'},
+        borders:{top:noBorder,bottom:{style:BorderStyle.SINGLE,size:6,color:'9CA3AF'},left:noBorder,right:noBorder},
+        children:[new Paragraph({children:[new TextRun({text:h,bold:true,size:20,color:'6B7280'})]})]
+      }))});
+      const dataRows=rows.map(row=>new TableRow({children:row.map((cell,i)=>new TableCell({
+        width:{size:colWidths[i],type:WidthType.PERCENTAGE},
+        borders:cellBorder,
+        children:[new Paragraph({children:[new TextRun({text:cell||'—',size:22})],spacing:{before:40,after:40}})]
+      }))}));
+      return new Table({rows:[headerRow,...dataRows],width:{size:100,type:WidthType.PERCENTAGE}});
+    };
+
+    const actionsTable=makeTable(
+      ['Qui','Quoi','Quand'],
+      (crData.actions||[]).map(a=>[a.qui||'—',a.quoi||'—',a.quand||'—']),
+      [20,55,25]
+    );
+
+    const agendaTable=makeTable(
+      ['Temporalité','Jalon'],
+      (crData.agenda||[]).map(a=>[a.date||'—',a.jalon||'—']),
+      [30,70]
+    );
+
+    const doc=new Document({sections:[{properties:{page:{margin:{top:1134,bottom:1134,left:1134,right:1134}}},children:[
+      new Paragraph({children:[new TextRun({text:sujet,bold:true,size:40,font:'Georgia'})],spacing:{after:80}}),
+      new Paragraph({children:[
+        new TextRun({text:'Date : ',bold:true,size:22,color:'7A7570'}),
+        new TextRun({text:dateF+'   ',size:22,color:'7A7570'}),
+        new TextRun({text:'Participants : ',bold:true,size:22,color:'7A7570'}),
+        new TextRun({text:part,size:22,color:'7A7570'})
+      ],spacing:{after:360}}),
+      h2('Objet & Contexte'),new Paragraph({text:toStr(crData.odj),spacing:{after:180}}),
+      h2('Points abordés'),...buls(crData.points),new Paragraph({text:'',spacing:{after:80}}),
+      h2('Décisions prises'),...buls(crData.decisions),new Paragraph({text:'',spacing:{after:80}}),
+      h2('Actions à mener'),new Paragraph({text:'',spacing:{after:80}}),
+      actionsTable,
+      new Paragraph({text:'',spacing:{after:80}}),
+      h2('Prochaine étape & Jalons'),new Paragraph({text:'',spacing:{after:80}}),
+      agendaTable,
+      new Paragraph({text:'',spacing:{after:360}}),
+      new Paragraph({children:[new TextRun({text:`Généré le ${new Date().toLocaleDateString('fr-FR')}`,size:16,color:'AAAAAA',italics:true})],alignment:AlignmentType.RIGHT})
+    ]}]});
+
+    const blob=await Packer.toBlob(doc);
+    dl(blob,'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      `CR_${sujet.replace(/[^a-zA-ZÀ-ÿ0-9]/g,'_').substring(0,40)}_${date||'sans_date'}.docx`);
+    showStatus('✓ Fichier Word téléchargé.','ok');
+  }catch(e){showStatus('Erreur Word : '+e.message,'err');}
+}
+
+// ── Export PDF ──
+async function exportPDF(){
+  if(!crData){showStatus('Structurez d\'abord le compte rendu.','err');return;}
+  showStatus('<span class="spin"></span>Génération PDF…','load');
+  try{
+    const JsPDF=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
+    if(!JsPDF) throw new Error('Librairie PDF non chargée. Rechargez la page.');
+    const sujet=document.getElementById('sujet').value||crData.titre||'Compte Rendu';
+    const date=document.getElementById('date').value||'';
+    const dateF=date?new Date(date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):'';
+    const part=toStr(crData.participants)||document.getElementById('participants').value||'';
+
+    const pdf=new JsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const PL=20,TW=170;let y=24;
+
+    pdf.setFont('helvetica','bold');pdf.setFontSize(17);pdf.setTextColor(26,26,31);
+    const tl=pdf.splitTextToSize(sujet,TW);pdf.text(tl,PL,y);y+=tl.length*7+3;
+    pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.setTextColor(122,117,112);
+    pdf.text(`Date : ${dateF}   |   Participants : ${part}`,PL,y);y+=8;
+    pdf.setDrawColor(200,195,188);pdf.line(PL,y,190,y);y+=8;
+
+    const sec=(title,contentFn)=>{
+      if(y>265){pdf.addPage();y=20;}
+      pdf.setFont('helvetica','bold');pdf.setFontSize(11);pdf.setTextColor(200,68,10);
+      pdf.text(title,PL,y);y+=6;
+      contentFn();y+=4;
+    };
+
+    const textBlock=content=>{
+      const str=toStr(content);if(!str)return;
+      pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.setTextColor(26,26,31);
+      str.split('\n').filter(l=>l.trim()).forEach(l=>{
+        const isBul=l.trim().startsWith('•');
+        const clean=l.replace(/^•\s*/,'');
+        pdf.splitTextToSize((isBul?'• ':'')+clean,TW-(isBul?4:0)).forEach((line,i)=>{
+          if(y>278){pdf.addPage();y=20;}
+          pdf.text(line,PL+(isBul&&i>0?4:0),y);y+=5.5;
+        });
+      });
+    };
+
+    const tableBlock=(headers,rows,colW)=>{
+      const rowH=8,hdrH=9;
+      // Header
+      if(y+hdrH>275){pdf.addPage();y=20;}
+      pdf.setFillColor(243,244,246);pdf.rect(PL,y,TW,hdrH,'F');
+      pdf.setFont('helvetica','bold');pdf.setFontSize(9);pdf.setTextColor(107,114,128);
+      let x=PL;
+      headers.forEach((h,i)=>{const w=TW*colW[i]/100;pdf.text(h,x+3,y+6);x+=w;});
+      y+=hdrH;
+      // Rows
+      pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.setTextColor(26,26,31);
+      rows.forEach(row=>{
+        if(y+rowH>275){pdf.addPage();y=20;}
+        pdf.setDrawColor(229,231,235);pdf.line(PL,y+rowH,PL+TW,y+rowH);
+        let x=PL;
+        row.forEach((cell,i)=>{
+          const w=TW*colW[i]/100;
+          const lines=pdf.splitTextToSize(cell||'—',w-4);
+          pdf.text(lines[0],x+3,y+6);
+          x+=w;
+        });
+        y+=rowH;
+      });
+    };
+
+    sec('Objet & Contexte',()=>textBlock(crData.odj));
+    sec('Points abordés',()=>textBlock(crData.points));
+    sec('Décisions prises',()=>textBlock(crData.decisions));
+    sec('Actions à mener',()=>tableBlock(
+      ['Qui','Quoi','Quand'],
+      (crData.actions||[]).map(a=>[a.qui||'—',a.quoi||'—',a.quand||'—']),
+      [20,55,25]
+    ));
+    sec('Prochaine étape & Jalons',()=>tableBlock(
+      ['Temporalité','Jalon'],
+      (crData.agenda||[]).map(a=>[a.date||'—',a.jalon||'—']),
+      [30,70]
+    ));
+
+    pdf.setFont('helvetica','italic');pdf.setFontSize(8);pdf.setTextColor(170,170,170);
+    pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`,190,290,{align:'right'});
+    pdf.save(`CR_${sujet.replace(/[^a-zA-ZÀ-ÿ0-9]/g,'_').substring(0,40)}_${date||'sans_date'}.pdf`);
+    showStatus('✓ PDF téléchargé.','ok');
+  }catch(e){showStatus('Erreur PDF : '+e.message,'err');}
+}
+
+function dl(blob,mime,name){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function showStatus(msg,type){const el=document.getElementById('status');el.innerHTML=msg;el.className='status on '+(type==='load'?'s-load':type==='ok'?'s-ok':'s-err');if(type==='ok')setTimeout(()=>el.classList.remove('on'),5000);}
+function clearTx(){finalTx='';lastFinalSegment='';document.getElementById('tx').value='';document.getElementById('interim').textContent='';}
+function resetAll(){
+  stopRec();clearTx();crData=null;audioFile=null;
+  document.getElementById('crWrap').classList.remove('on');
+  document.getElementById('exportRow').classList.remove('on');
+  document.getElementById('btnWord').disabled=true;
+  document.getElementById('btnPDF').disabled=true;
+  document.getElementById('status').classList.remove('on');
+  document.getElementById('timer').textContent='';
+  document.getElementById('recLbl').textContent='Appuyer pour enregistrer';
+  document.getElementById('sujet').value='';document.getElementById('participants').value='';
+  document.getElementById('date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('fileRow').classList.remove('on');
+  document.getElementById('audioIn').value='';
+}
+</script>
+</body>
+</html>
