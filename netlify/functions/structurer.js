@@ -19,13 +19,21 @@ exports.handler = async (event) => {
       },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
-        max_tokens: 1500,
+        max_tokens: 4000,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
 
-    const data = await response.json();
-    if (data.error) throw new Error(data.error.message);
+    // Lire comme texte d'abord pour diagnostiquer les erreurs non-JSON
+    const rawText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch(e) {
+      return { statusCode: 500, headers, body: JSON.stringify({ error: `Réponse Groq non-JSON : ${rawText.substring(0, 200)}` }) };
+    }
+
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
 
     const text = data.choices?.[0]?.message?.content || '';
     return { statusCode: 200, headers, body: JSON.stringify({ text }) };

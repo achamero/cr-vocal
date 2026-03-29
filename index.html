@@ -114,18 +114,6 @@
 
 <div class="container">
 
-  <!-- Clé API -->
-  <div class="card card-pad" id="keySection">
-    <div class="full">
-      <label>🔑 Clé API Groq <span style="font-size:10px;color:var(--muted);text-transform:none;letter-spacing:0">(stockée localement, jamais envoyée ailleurs)</span></label>
-      <div style="display:flex;gap:8px">
-        <input type="password" id="apiKey" placeholder="gsk_..." style="flex:1">
-        <button class="btn-sm" onclick="saveKey()">Sauver</button>
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:5px">Clé gratuite sur <a href="https://console.groq.com" target="_blank" style="color:var(--accent)">console.groq.com</a></div>
-    </div>
-  </div>
-
   <!-- Métadonnées -->
   <div class="card card-pad">
     <div class="grid2">
@@ -204,18 +192,7 @@
 </div>
 
 <script>
-// ── Clé API ──
-function getKey(){return localStorage.getItem('groq_key')||'';}
-function saveKey(){
-  const k=document.getElementById('apiKey').value.trim();
-  if(!k){showStatus('Entrez votre clé API Groq.','err');return;}
-  localStorage.setItem('groq_key',k);
-  document.getElementById('apiKey').value='';
-  document.getElementById('apiKey').placeholder='••••••••• (clé enregistrée)';
-  showStatus('✓ Clé API sauvegardée.','ok');
-}
 window.addEventListener('load',()=>{
-  if(getKey()) document.getElementById('apiKey').placeholder='••••••••• (clé enregistrée)';
   document.getElementById('date').value=new Date().toISOString().split('T')[0];
 });
 
@@ -256,22 +233,24 @@ function prepFile(file){
 
 async function transcribeAudio(){
   if(!audioFile) return;
-  const key=getKey();
-  if(!key){showStatus('Entrez et sauvegardez votre clé API Groq en haut.','err');return;}
   const btn=document.getElementById('btnTranscribe');
   btn.disabled=true; btn.textContent='⏳…';
   showStatus('<span class="spin"></span>Transcription Whisper en cours…','load');
   try{
-    const form=new FormData();
-    form.append('file',audioFile.file,audioFile.file.name);
-    form.append('model','whisper-large-v3-turbo');
-    form.append('language','fr');
-    form.append('response_format','json');
-    const r=await fetch('https://api.groq.com/openai/v1/audio/transcriptions',{
-      method:'POST',headers:{'Authorization':`Bearer ${key}`},body:form
+    // Convertir en base64 pour passer par la fonction Netlify
+    const reader = new FileReader();
+    const b64 = await new Promise((res,rej)=>{reader.onload=e=>res(e.target.result.split(',')[1]);reader.onerror=rej;reader.readAsDataURL(audioFile.file);});
+    const ext=audioFile.file.name.split('.').pop().toLowerCase();
+    const mtMap={mp3:'audio/mpeg',aac:'audio/aac',m4a:'audio/mp4',mp4:'audio/mp4',wav:'audio/wav',ogg:'audio/ogg',webm:'audio/webm'};
+    const mt=mtMap[ext]||audioFile.file.type||'audio/mpeg';
+
+    const r=await fetch('/.netlify/functions/transcrire',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({base64:b64,mimeType:mt,filename:audioFile.file.name})
     });
-    const d=await r.json();
-    if(d.error) throw new Error(typeof d.error==='string'?d.error:(d.error.message||JSON.stringify(d.error)));
+    const rawText=await r.text();
+    let d;try{d=JSON.parse(rawText);}catch(e){throw new Error('Réponse serveur invalide : '+rawText.substring(0,80));}
+    if(d.error) throw new Error(d.error);
     if(!d.text) throw new Error('Transcription vide');
     document.getElementById('tx').value=d.text;
     showStatus('✓ Transcription terminée.','ok');
