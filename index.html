@@ -248,6 +248,149 @@ function makeKeywords(crData, sujet){
   return kw.filter(Boolean).join(', ').substring(0,200);
 }
 
+// ── Markdown → HTML (preview) ──
+function markdownToHtml(md){
+  let h=md
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/^#### (.+)$/gm,'<h4 style="font-size:13px;font-weight:700;color:#666;margin:12px 0 4px">$1</h4>')
+    .replace(/^### (.+)$/gm,'<h3 style="font-size:14px;font-weight:700;color:#333;margin:14px 0 5px">$1</h3>')
+    .replace(/^## (.+)$/gm,'<h2 style="font-size:15px;font-weight:700;color:var(--accent);margin:18px 0 6px;padding-bottom:3px;border-bottom:1px solid var(--border)">$1</h2>')
+    .replace(/^# (.+)$/gm,'<h1 style="font-size:18px;font-weight:700;font-family:\'DM Serif Display\',serif;margin:0 0 12px">$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>');
+  // Tableaux
+  h=h.replace(/(^\|.+\|$\n?)+/gm, block=>{
+    const rows=block.trim().split('\n').filter(r=>!r.match(/^\|[\s\-|]+\|$/));
+    const trs=rows.map((r,ri)=>{
+      const cells=r.split('|').filter((_,i,a)=>i>0&&i<a.length-1).map(c=>c.trim());
+      const tag=ri===0?'th':'td';
+      const style=ri===0?'background:#F3F4F6;font-weight:600;font-size:12px;color:#555;':'font-size:13px;';
+      return '<tr>'+cells.map(c=>`<${tag} style="padding:6px 8px;border:1px solid var(--border);${style}">${c}</${tag}>`).join('')+'</tr>';
+    });
+    return `<table style="width:100%;border-collapse:collapse;margin:8px 0">${trs.join('')}</table>`;
+  });
+  // Listes
+  h=h.replace(/(^[-*] .+$\n?)+/gm, block=>{
+    const items=block.trim().split('\n').map(l=>`<li style="margin-bottom:3px">${l.replace(/^[-*] /,'')}</li>`);
+    return `<ul style="padding-left:18px;margin:4px 0">${items.join('')}</ul>`;
+  });
+  h=h.replace(/^---+$/gm,'<hr style="border:none;border-top:1px solid var(--border);margin:12px 0">');
+  // Paragraphes
+  h=h.split('\n\n').map(p=>p.trim()&&!p.startsWith('<')?`<p style="margin:0 0 8px;font-size:14px;line-height:1.7">${p.replace(/\n/g,'<br>')}</p>`:p).join('\n');
+  return h;
+}
+
+// ── Parse inline gras/italique pour docx ──
+function parseInlineRuns(text,lib){
+  const{TextRun}=lib;
+  const runs=[];
+  const re=/\*\*(.+?)\*\*|\*(.+?)\*|([^*]+)/g;
+  let m;
+  while((m=re.exec(text))!==null){
+    if(m[1]) runs.push(new TextRun({text:m[1],bold:true,size:22}));
+    else if(m[2]) runs.push(new TextRun({text:m[2],italics:true,size:22}));
+    else if(m[3]) runs.push(new TextRun({text:m[3],size:22}));
+  }
+  return runs.length?runs:[new TextRun({text,size:22})];
+}
+
+// ── Markdown → paragraphes docx ──
+function markdownToDocxChildren(md,lib){
+  const{Paragraph,TextRun,HeadingLevel,Table,TableRow,TableCell,WidthType,BorderStyle}=lib;
+  const noBorder={style:BorderStyle.NONE,size:0,color:'FFFFFF'};
+  const lines=md.split('\n');
+  const children=[];
+  let i=0;
+  while(i<lines.length){
+    const l=lines[i];
+    // Tableau Markdown
+    if(l.trim().startsWith('|')&&i+1<lines.length&&lines[i+1].includes('---')){
+      const headers=l.trim().split('|').filter(c=>c.trim()).map(c=>c.trim());
+      i+=2;
+      const rows=[];
+      while(i<lines.length&&lines[i].trim().startsWith('|')){
+        rows.push(lines[i].trim().split('|').filter(c=>c.trim()).map(c=>c.trim()));
+        i++;
+      }
+      const cw=Math.floor(100/Math.max(headers.length,1));
+      const hRow=new TableRow({children:headers.map(h=>new TableCell({width:{size:cw,type:WidthType.PERCENTAGE},shading:{fill:'F3F4F6'},borders:{top:noBorder,bottom:{style:BorderStyle.SINGLE,size:6,color:'9CA3AF'},left:noBorder,right:noBorder},children:[new Paragraph({children:[new TextRun({text:h,bold:true,size:20,color:'6B7280'})]})]}))});
+      const dRows=rows.map(row=>new TableRow({children:row.map(cell=>new TableCell({width:{size:cw,type:WidthType.PERCENTAGE},borders:{top:noBorder,bottom:{style:BorderStyle.SINGLE,size:4,color:'E5E7EB'},left:noBorder,right:noBorder},children:[new Paragraph({children:[new TextRun({text:cell||'',size:22})],spacing:{before:40,after:40}})]}))}));
+      children.push(new Table({rows:[hRow,...dRows],width:{size:100,type:WidthType.PERCENTAGE}}));
+      children.push(new Paragraph({text:'',spacing:{after:100}}));
+      continue;
+    }
+    const t=l.trim();
+    if(!t){children.push(new Paragraph({text:'',spacing:{after:80}}));i++;continue;}
+    const hm=t.match(/^(#{1,4})\s+(.+)$/);
+    if(hm){
+      const sz=[36,28,24,22][hm[1].length-1]||22;
+      const clr=hm[1].length===1?'1A1A1F':hm[1].length===2?'C8440A':'444444';
+      children.push(new Paragraph({children:[new TextRun({text:hm[2],bold:true,size:sz,color:clr})],spacing:{before:hm[1].length===1?400:280,after:120}}));
+      i++;continue;
+    }
+    if(t.match(/^[-*]\s+/)){
+      children.push(new Paragraph({children:parseInlineRuns(t.replace(/^[-*]\s+/,''),lib),bullet:{level:0},spacing:{after:50}}));
+      i++;continue;
+    }
+    if(t.match(/^---+$/)){children.push(new Paragraph({text:'',spacing:{before:120,after:120},border:{bottom:{style:BorderStyle.SINGLE,size:4,color:'D4CFC6'}}}));i++;continue;}
+    children.push(new Paragraph({children:parseInlineRuns(t,lib),spacing:{after:80}}));
+    i++;
+  }
+  return children;
+}
+
+// ── Markdown → PDF ──
+function markdownToPDF(md,pdf,PL,TW,startY){
+  let y=startY||24;
+  const chk=(h=8)=>{if(y+h>278){pdf.addPage();y=20;}};
+  const lines=md.split('\n');
+  let i=0;
+  while(i<lines.length){
+    const l=lines[i];
+    if(l.trim().startsWith('|')&&i+1<lines.length&&lines[i+1].includes('---')){
+      const headers=l.trim().split('|').filter(c=>c.trim()).map(c=>c.trim());
+      i+=2;
+      const rows=[];
+      while(i<lines.length&&lines[i].trim().startsWith('|')){rows.push(lines[i].trim().split('|').filter(c=>c.trim()).map(c=>c.trim()));i++;}
+      const cw=TW/Math.max(headers.length,1);
+      chk(9);pdf.setFillColor(243,244,246);pdf.rect(PL,y,TW,9,'F');
+      pdf.setFont('helvetica','bold');pdf.setFontSize(9);pdf.setTextColor(107,114,128);
+      headers.forEach((h,ci)=>{pdf.text(h,PL+ci*cw+3,y+6);});y+=9;
+      pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.setTextColor(26,26,31);
+      rows.forEach(row=>{chk(8);pdf.setDrawColor(229,231,235);pdf.line(PL,y+8,PL+TW,y+8);row.forEach((cell,ci)=>{const wrapped=pdf.splitTextToSize(cell||'',cw-4);pdf.text(wrapped[0]||'',PL+ci*cw+3,y+6);});y+=8;});
+      y+=4;continue;
+    }
+    const t=l.trim();
+    if(!t){y+=4;i++;continue;}
+    const hm=t.match(/^(#{1,4})\s+(.+)$/);
+    if(hm){
+      const sz=[15,13,12,11][hm[1].length-1]||11;
+      const clr=hm[1].length===1?[26,26,31]:hm[1].length===2?[200,68,10]:[80,80,80];
+      if(hm[1].length===1)y+=4;
+      chk(sz+4);pdf.setFont('helvetica','bold');pdf.setFontSize(sz);pdf.setTextColor(...clr);
+      const wrapped=pdf.splitTextToSize(hm[2],TW);
+      wrapped.forEach(wl=>{chk();pdf.text(wl,PL,y);y+=sz*0.65+2;});
+      if(hm[1].length<=2){pdf.setDrawColor(220,215,206);pdf.line(PL,y,PL+TW,y);y+=3;}else y+=2;
+      i++;continue;
+    }
+    if(t.match(/^[-*]\s+/)){
+      const plain=t.replace(/^[-*]\s+/,'').replace(/\*\*(.+?)\*\*/g,'$1').replace(/\*(.+?)\*/g,'$1');
+      pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.setTextColor(26,26,31);
+      const wrapped=pdf.splitTextToSize('• '+plain,TW-4);
+      wrapped.forEach((wl,wi)=>{chk();pdf.text(wl,PL+(wi>0?4:0),y);y+=5.5;});
+      i++;continue;
+    }
+    if(t.match(/^---+$/)){pdf.setDrawColor(200,195,188);pdf.line(PL,y,PL+TW,y);y+=5;i++;continue;}
+    const plain=t.replace(/\*\*(.+?)\*\*/g,'$1').replace(/\*(.+?)\*/g,'$1');
+    const isBold=/\*\*/.test(t);
+    pdf.setFont('helvetica',isBold?'bold':'normal');pdf.setFontSize(10);pdf.setTextColor(26,26,31);
+    const wrapped=pdf.splitTextToSize(plain,TW);
+    wrapped.forEach(wl=>{chk();pdf.text(wl,PL,y);y+=5.5;});
+    i++;
+  }
+  return y;
+}
+
 let lastFinalSegment='';
 let modeleTexte=''; // Contenu extrait du modèle Word
 
@@ -446,9 +589,9 @@ async function structurer(){
 
   const duреeSaisie=document.getElementById('duree').value.trim();
 
-  // ── Mode MODÈLE : l'IA remplit le modèle en texte libre ──
+  // ── Mode MODÈLE : l'IA remplit le modèle en Markdown structuré ──
   if(modeleTexte){
-    const promptModele=`Tu es expert en comptes rendus professionnels.
+    const promptModele=`Tu es expert en comptes rendus professionnels et en mise en forme de documents.
 
 CONTEXTE :
 - Réunion du ${date||'date non précisée'}
@@ -460,22 +603,20 @@ TRANSCRIPTION :
 ${texte}
 
 MODÈLE À REMPLIR :
-Voici le modèle du compte rendu. Tu dois le remplir en respectant EXACTEMENT sa structure, ses sections et son ordre. 
-Les balises {{...}} sont des espaces réservés que tu remplaces par l'information correspondante extraite de la transcription.
-Exemples de balises et leur signification :
-- {{titre}} ou {{objet}} → titre ou objet de la réunion
-- {{date}} → date de la réunion
-- {{duree}} ou {{durée}} → durée estimée ou saisie
-- {{participants}} → liste des participants identifiés
-- {{nombre de participants}} ou {{nb participants}} → nombre de participants
-- {{ordre du jour}} → ordre du jour résumé
-- {{points abordés}} → développement des points discutés
-- {{décisions}} → décisions prises
-- {{actions}} → actions à mener (qui, quoi, quand)
-- {{prochaine étape}} ou {{agenda}} → prochains jalons
-- Toute autre balise {{...}} → remplace par l'information la plus pertinente tirée de la transcription
+Remplis ce modèle en respectant EXACTEMENT sa structure et son ordre de sections.
+Les balises {{...}} sont des espaces réservés — remplace chacune par l'information correspondante tirée de la transcription.
+Toute balise {{quelque chose}} doit être interprétée intelligemment selon son libellé.
 
-Ne génère QUE le contenu rempli du modèle, sans commentaires, sans JSON, sans markdown autour.
+RÈGLES DE MISE EN FORME (OBLIGATOIRES) :
+- Utilise le Markdown pour structurer : # Titre principal, ## Section, ### Sous-section
+- Listes à puces avec - ou *
+- Texte important en **gras**
+- Sauts de ligne généreux entre les sections
+- Les tableaux utilisent la syntaxe Markdown : | Col1 | Col2 | avec ligne de séparation |---|---|
+- Soigne la présentation : titres clairs, contenu aéré, hiérarchie visuelle cohérente
+- Si le modèle n'a pas de balises, crée toi-même une présentation soignée basée sur sa structure
+
+Génère UNIQUEMENT le compte rendu rempli en Markdown. Pas de commentaires, pas d'explication.
 
 ${modeleTexte}`;
 
@@ -488,13 +629,13 @@ ${modeleTexte}`;
       let d;try{d=JSON.parse(rawText);}catch(e){throw new Error('Réponse serveur invalide');}
       if(d.error) throw new Error(d.error);
 
-      // Stocker le texte libre dans crData pour l'export
-      crData={modeleMode:true, texteLibre:d.text, titre:sujetSaisi||'Compte Rendu', date, participants:partSaisies, duree:duреeSaisie};
+      // Stocker le markdown dans crData pour l'export
+      crData={modeleMode:true, markdown:d.text, titre:sujetSaisi||d.text.split('\n')[0].replace(/^#+\s*/,'')||'Compte Rendu', date, participants:partSaisies, duree:duреeSaisie};
 
-      // Affichage dans la zone CR — mode texte libre
-      document.getElementById('c-odj').innerHTML='<em style="color:var(--muted);font-size:12px">Mode modèle — voir export Word/PDF</em>';
-      document.getElementById('c-part').textContent=partSaisies||'(voir CR)';
-      document.getElementById('c-pts').innerHTML=`<pre style="font-family:'DM Sans',sans-serif;font-size:13px;white-space:pre-wrap;line-height:1.7">${esc(d.text)}</pre>`;
+      // Affichage preview Markdown dans la zone CR
+      document.getElementById('c-odj').innerHTML='<em style="color:var(--muted);font-size:12px">Mode modèle actif</em>';
+      document.getElementById('c-part').textContent=partSaisies||'(identifiés dans le CR)';
+      document.getElementById('c-pts').innerHTML=markdownToHtml(d.text);
       document.getElementById('blk-dec').style.display='none';
       document.getElementById('blk-act').style.display='none';
       document.getElementById('blk-agenda').style.display='none';
@@ -658,27 +799,10 @@ async function exportDocx(){
       let lib=getDocxLib();
       if(!lib){await new Promise(r=>setTimeout(r,1200));lib=getDocxLib();}
       if(!lib) throw new Error('Librairie Word non chargée — rechargez la page.');
-      const{Document,Packer,Paragraph,TextRun,HeadingLevel,AlignmentType}=lib;
+      const{Document,Packer,Paragraph,TextRun,HeadingLevel,AlignmentType,Table,TableRow,TableCell,WidthType,BorderStyle}=lib;
       const sujet=crData.titre||'Compte Rendu';
       const date=crData.date||'';
-      const dateF=date?new Date(date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):'';
-      // Convertir le texte libre en paragraphes Word avec détection des titres
-      const lignes=crData.texteLibre.split('\n');
-      const children=[];
-      lignes.forEach(l=>{
-        const t=l.trim();
-        if(!t){children.push(new Paragraph({text:'',spacing:{after:60}}));return;}
-        if(t.startsWith('=== ')&&t.endsWith(' ==='))
-          children.push(new Paragraph({text:t.replace(/^=== | ===$]/g,'').replace(/=== (.*) ===/,'$1'),heading:HeadingLevel.HEADING_1,spacing:{before:240,after:100}}));
-        else if(t.startsWith('== ')&&t.endsWith(' =='))
-          children.push(new Paragraph({text:t.replace(/^== | ==$/g,''),heading:HeadingLevel.HEADING_2,spacing:{before:200,after:80}}));
-        else if(t.startsWith('= ')&&t.endsWith(' ='))
-          children.push(new Paragraph({text:t.replace(/^= | =$/g,''),heading:HeadingLevel.HEADING_3,spacing:{before:160,after:60}}));
-        else if(t.startsWith('• '))
-          children.push(new Paragraph({text:t.slice(2),bullet:{level:0},spacing:{after:40}}));
-        else
-          children.push(new Paragraph({children:[new TextRun({text:t,size:22})],spacing:{after:60}}));
-      });
+      const children=markdownToDocxChildren(crData.markdown,lib);
       children.push(new Paragraph({children:[new TextRun({text:`Généré le ${new Date().toLocaleDateString('fr-FR')}`,size:16,color:'AAAAAA',italics:true})],alignment:AlignmentType.RIGHT}));
       const doc=new Document({creator:'Cham IA',lastModifiedBy:'Cham IA',title:sujet,keywords:sujet,
         sections:[{properties:{page:{margin:{top:1134,bottom:1134,left:1134,right:1134}}},children}]});
@@ -828,34 +952,9 @@ async function exportPDF(){
       if(!JsPDF) throw new Error('Librairie PDF non chargée.');
       const sujet=crData.titre||'Compte Rendu';
       const date=crData.date||'';
-      const dateF=date?new Date(date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):'';
       const pdf=new JsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-      const PL=20,TW=170;let y=20;
-      const lignes=crData.texteLibre.split('\n');
-      lignes.forEach(l=>{
-        const t=l.trim();
-        if(!t){y+=4;return;}
-        if(y>278){pdf.addPage();y=20;}
-        if(t.startsWith('=== ')&&t.endsWith(' ===')){
-          pdf.setFont('helvetica','bold');pdf.setFontSize(14);pdf.setTextColor(26,26,31);
-          const txt=t.replace(/^=== | ===$]/g,'').replace(/=== (.*) ===/,'$1');
-          pdf.text(txt,PL,y);y+=9;
-        } else if(t.startsWith('== ')&&t.endsWith(' ==')){
-          pdf.setFont('helvetica','bold');pdf.setFontSize(12);pdf.setTextColor(200,68,10);
-          pdf.text(t.replace(/^== | ==$/g,''),PL,y);y+=7;
-        } else if(t.startsWith('= ')&&t.endsWith(' =')){
-          pdf.setFont('helvetica','bold');pdf.setFontSize(11);pdf.setTextColor(60,60,60);
-          pdf.text(t.replace(/^= | =$/g,''),PL+4,y);y+=6;
-        } else if(t.startsWith('• ')){
-          pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.setTextColor(26,26,31);
-          const wrapped=pdf.splitTextToSize('• '+t.slice(2),TW-4);
-          wrapped.forEach((line,i)=>{if(y>278){pdf.addPage();y=20;}pdf.text(line,PL+(i>0?6:0),y);y+=5.5;});
-        } else {
-          pdf.setFont('helvetica','normal');pdf.setFontSize(10);pdf.setTextColor(26,26,31);
-          const wrapped=pdf.splitTextToSize(t,TW);
-          wrapped.forEach(line=>{if(y>278){pdf.addPage();y=20;}pdf.text(line,PL,y);y+=5.5;});
-        }
-      });
+      const PL=20,TW=170;
+      let y=markdownToPDF(crData.markdown,pdf,PL,TW,24);
       pdf.setFont('helvetica','italic');pdf.setFontSize(8);pdf.setTextColor(170,170,170);
       pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`,190,290,{align:'right'});
       pdf.setProperties({title:sujet,author:'Cham IA',creator:'Cham IA',keywords:sujet,subject:'Compte Rendu'});
