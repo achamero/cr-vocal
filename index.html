@@ -180,6 +180,14 @@
 
 
 
+<!-- Champ modèle Word -->
+<div style="background:var(--paper);border-top:1px solid var(--border);padding:10px 24px 0">
+  <div style="max-width:680px;margin:0 auto">
+    <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px">🔗 Modèle Word <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(URL .docx — si renseigné, le CR suivra sa structure)</span></label>
+    <input type="url" id="modeleUrl" placeholder="https://…/modele.docx" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:13px;background:white;color:var(--ink);outline:none;margin-bottom:10px">
+  </div>
+</div>
+
 <div class="bottom">
   <button class="btn btn-light" onclick="resetAll()" style="flex:0.5">🔄 Nouveau</button>
   <button class="btn btn-red" id="btnWord" onclick="exportDocx()" disabled>⬇ Word</button>
@@ -206,7 +214,33 @@ function getDocxLib(){
 
 let recog=null,isRec=false,timerInt=null,secs=0;
 let finalTx='',crData=null,audioFile=null;
-// Dédoublonnage Android : garder trace du dernier texte final ajouté
+// ── Nom de fichier : yyyymmdd nom type ──
+function makeFilename(sujet, date, type){
+  const d=(date||new Date().toISOString().split('T')[0]).replace(/-/g,'');
+  const nom=(sujet||'sans_titre').replace(/[^a-zA-ZÀ-ÿ0-9 ]/g,' ').replace(/\s+/g,' ').trim().substring(0,50);
+  const ext=type==='CR'?'.docx':type==='CR-PDF'?'.pdf':type==='Transcript'?'.docx':'.pdf';
+  const label=type==='CR'||type==='Transcript-Word'?type:type;
+  return `${d} ${nom} ${type}${ext}`;
+}
+function makePDFFilename(sujet, date, type){
+  const d=(date||new Date().toISOString().split('T')[0]).replace(/-/g,'');
+  const nom=(sujet||'sans_titre').replace(/[^a-zA-ZÀ-ÿ0-9 ]/g,' ').replace(/\s+/g,' ').trim().substring(0,50);
+  return `${d} ${nom} ${type}.pdf`;
+}
+function makeDocxFilename(sujet, date, type){
+  const d=(date||new Date().toISOString().split('T')[0]).replace(/-/g,'');
+  const nom=(sujet||'sans_titre').replace(/[^a-zA-ZÀ-ÿ0-9 ]/g,' ').replace(/\s+/g,' ').trim().substring(0,50);
+  return `${d} ${nom} ${type}.docx`;
+}
+
+// Mots-clés pour les propriétés du fichier
+function makeKeywords(crData, sujet){
+  const kw=[sujet];
+  if(crData&&crData.participants) kw.push(toStr(crData.participants));
+  if(crData&&crData.points&&crData.points.length) crData.points.slice(0,5).forEach(p=>p.titre&&kw.push(p.titre));
+  return kw.filter(Boolean).join(', ').substring(0,200);
+}
+
 let lastFinalSegment='';
 
 function onTxInput(){
@@ -357,7 +391,10 @@ async function structurer(){
   const partSaisies=document.getElementById('participants').value.trim();
 
   const duреeSaisie=document.getElementById('duree').value.trim();
-  const prompt=`Tu es expert en comptes rendus professionnels.
+  const modeleUrl=document.getElementById('modeleUrl').value.trim();
+  const modeleNote=modeleUrl?`\nL'organisation du CR doit respecter la structure du modèle Word disponible à cette URL : ${modeleUrl} (adapte les sections en conséquence si tu peux en déduire la structure depuis l'URL ou le nom du fichier).`:'';
+
+  const prompt=`Tu es expert en comptes rendus professionnels.${modeleNote}
 Réunion du ${date}. Participants initialement indiqués : ${partSaisies||'non précisés'}.
 Objet saisi : "${sujetSaisi||'non précisé'}".
 Durée saisie : "${duреeSaisie||'non précisée'}".
@@ -508,14 +545,17 @@ async function exportDocx(){
       const sujet=document.getElementById('sujet').value||'Transcription';
       const date=document.getElementById('date').value||'';
       const dateF=date?new Date(date).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):'';
-      const doc=new Document({sections:[{properties:{page:{margin:{top:1134,bottom:1134,left:1134,right:1134}}},children:[
+      const doc=new Document({
+        creator:'Cham IA',author:'Cham IA',
+        title:sujet,keywords:`transcript, ${sujet}, ${dateF}`,
+        sections:[{properties:{page:{margin:{top:1134,bottom:1134,left:1134,right:1134}}},children:[
         new Paragraph({children:[new TextRun({text:sujet,bold:true,size:36,font:'Georgia'})],spacing:{after:80}}),
         new Paragraph({children:[new TextRun({text:'Date : ',bold:true,size:22,color:'7A7570'}),new TextRun({text:dateF,size:22,color:'7A7570'})],spacing:{after:300}}),
         new Paragraph({text:texte,spacing:{after:200}})
       ]}]});
       const blob=await Packer.toBlob(doc);
       dl(blob,'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        `Transcript_${sujet.replace(/[^a-zA-ZÀ-ÿ0-9]/g,'_').substring(0,40)}_${date||'sans_date'}.docx`);
+        makeDocxFilename(sujet,date,'Transcript'));
       showStatus('✓ Transcript Word téléchargé.','ok');
     }catch(e){showStatus('Erreur Word : '+e.message,'err');}
     return;
@@ -606,11 +646,16 @@ async function exportDocx(){
     children.push(new Paragraph({text:'',spacing:{after:280}}));
     children.push(new Paragraph({children:[new TextRun({text:`Généré le ${new Date().toLocaleDateString('fr-FR')}`,size:16,color:'AAAAAA',italics:true})],alignment:AlignmentType.RIGHT}));
 
-    const doc=new Document({sections:[{properties:{page:{margin:{top:1134,bottom:1134,left:1134,right:1134}}},children}]});
+    const doc=new Document({
+      creator:'Cham IA',lastModifiedBy:'Cham IA',
+      title:sujet,
+      keywords:makeKeywords(crData,sujet),
+      sections:[{properties:{page:{margin:{top:1134,bottom:1134,left:1134,right:1134}}},children}]
+    });
 
     const blob=await Packer.toBlob(doc);
     dl(blob,'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      `CR_${sujet.replace(/[^a-zA-ZÀ-ÿ0-9]/g,'_').substring(0,40)}_${date||'sans_date'}.docx`);
+      makeDocxFilename(sujet,date,'CR'));
     showStatus('✓ Fichier Word téléchargé.','ok');
   }catch(e){showStatus('Erreur Word : '+e.message,'err');}
 }
@@ -642,7 +687,8 @@ async function exportPDF(){
       });
       pdf.setFont('helvetica','italic');pdf.setFontSize(8);pdf.setTextColor(170,170,170);
       pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`,190,290,{align:'right'});
-      pdf.save(`Transcript_${sujet.replace(/[^a-zA-ZÀ-ÿ0-9]/g,'_').substring(0,40)}_${date||'sans_date'}.pdf`);
+      pdf.setProperties({title:sujet,author:'Cham IA',creator:'Cham IA',keywords:`transcript, ${sujet}`,subject:'Transcription'});
+      pdf.save(makePDFFilename(sujet,date,'Transcript'));
       showStatus('✓ Transcript PDF téléchargé.','ok');
     }catch(e){showStatus('Erreur PDF : '+e.message,'err');}
     return;
@@ -743,7 +789,8 @@ async function exportPDF(){
 
     pdf.setFont('helvetica','italic');pdf.setFontSize(8);pdf.setTextColor(170,170,170);
     pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`,190,290,{align:'right'});
-    pdf.save(`CR_${sujet.replace(/[^a-zA-ZÀ-ÿ0-9]/g,'_').substring(0,40)}_${date||'sans_date'}.pdf`);
+    pdf.setProperties({title:sujet,author:'Cham IA',creator:'Cham IA',keywords:makeKeywords(crData,sujet),subject:'Compte Rendu'});
+    pdf.save(makePDFFilename(sujet,date,'CR'));
     showStatus('✓ PDF téléchargé.','ok');
   }catch(e){showStatus('Erreur PDF : '+e.message,'err');}
 }
@@ -761,6 +808,7 @@ function resetAll(){
   document.getElementById('timer').textContent='';
   document.getElementById('recLbl').textContent='Appuyer pour enregistrer';
   document.getElementById('sujet').value='';document.getElementById('participants').value='';document.getElementById('duree').value='';
+  // modeleUrl conservé volontairement
   document.getElementById('date').value=new Date().toISOString().split('T')[0];
   document.getElementById('fileRow').classList.remove('on');
   document.getElementById('audioIn').value='';
