@@ -6,6 +6,7 @@
 <title>CR Vocal</title>
 <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
   :root{--ink:#1a1a1f;--paper:#f5f2ec;--cream:#ede9e0;--accent:#c8440a;--accent-light:#f0c4b0;--muted:#7a7570;--border:#d4cfc6;--red:#e53e3e}
@@ -183,8 +184,14 @@
 <!-- Champ modèle Word -->
 <div style="background:var(--paper);border-top:1px solid var(--border);padding:10px 24px 0">
   <div style="max-width:680px;margin:0 auto">
-    <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px">🔗 Modèle Word <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(URL .docx — si renseigné, le CR suivra sa structure)</span></label>
-    <input type="url" id="modeleUrl" placeholder="https://…/modele.docx" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:13px;background:white;color:var(--ink);outline:none;margin-bottom:10px">
+    <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px">📄 Modèle Word <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(optionnel — structure le CR selon ce modèle)</span></label>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <div style="position:relative;flex:1">
+        <input type="file" id="modeleFile" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="loadModele(event)" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
+        <div id="modeleLabel" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:13px;background:white;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Choisir un fichier .docx…</div>
+      </div>
+      <button class="btn-sm" onclick="clearModele()" id="btnClearModele" style="display:none;background:var(--cream);color:var(--ink);border:1px solid var(--border)">✕</button>
+    </div>
   </div>
 </div>
 
@@ -242,6 +249,32 @@ function makeKeywords(crData, sujet){
 }
 
 let lastFinalSegment='';
+let modeleTexte=''; // Contenu extrait du modèle Word
+
+// ── Modèle Word ──
+async function loadModele(e){
+  const file=e.target.files[0];
+  if(!file) return;
+  try{
+    const arrayBuffer=await file.arrayBuffer();
+    const result=await mammoth.extractRawText({arrayBuffer});
+    modeleTexte=result.value.trim();
+    document.getElementById('modeleLabel').textContent=`✓ ${file.name}`;
+    document.getElementById('modeleLabel').style.color='var(--ink)';
+    document.getElementById('btnClearModele').style.display='';
+    showStatus('✓ Modèle chargé — le CR suivra sa structure.','ok');
+  }catch(err){
+    showStatus('Erreur lecture modèle : '+err.message,'err');
+    modeleTexte='';
+  }
+}
+function clearModele(){
+  modeleTexte='';
+  document.getElementById('modeleFile').value='';
+  document.getElementById('modeleLabel').textContent='Choisir un fichier .docx…';
+  document.getElementById('modeleLabel').style.color='var(--muted)';
+  document.getElementById('btnClearModele').style.display='none';
+}
 
 function onTxInput(){
   const has=document.getElementById('tx').value.trim().length>0;
@@ -391,8 +424,7 @@ async function structurer(){
   const partSaisies=document.getElementById('participants').value.trim();
 
   const duреeSaisie=document.getElementById('duree').value.trim();
-  const modeleUrl=document.getElementById('modeleUrl').value.trim();
-  const modeleNote=modeleUrl?`\nL'organisation du CR doit respecter la structure du modèle Word disponible à cette URL : ${modeleUrl} (adapte les sections en conséquence si tu peux en déduire la structure depuis l'URL ou le nom du fichier).`:'';
+  const modeleNote=modeleTexte?`\n\nMODÈLE DE RÉFÉRENCE — structure ton CR en suivant exactement les sections et l'organisation de ce modèle :\n${modeleTexte.substring(0,3000)}`:'';
 
   const prompt=`Tu es expert en comptes rendus professionnels.${modeleNote}
 Réunion du ${date}. Participants initialement indiqués : ${partSaisies||'non précisés'}.
@@ -808,7 +840,7 @@ function resetAll(){
   document.getElementById('timer').textContent='';
   document.getElementById('recLbl').textContent='Appuyer pour enregistrer';
   document.getElementById('sujet').value='';document.getElementById('participants').value='';document.getElementById('duree').value='';
-  // modeleUrl conservé volontairement
+  // modeleTexte et champ modèle conservés volontairement
   document.getElementById('date').value=new Date().toISOString().split('T')[0];
   document.getElementById('fileRow').classList.remove('on');
   document.getElementById('audioIn').value='';
