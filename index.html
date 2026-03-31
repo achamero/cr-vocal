@@ -257,8 +257,10 @@ async function loadModele(e){
   if(!file) return;
   try{
     const arrayBuffer=await file.arrayBuffer();
-    const result=await mammoth.extractRawText({arrayBuffer});
-    modeleTexte=result.value.trim();
+    // Extraire le HTML structuré (préserve h1/h2/h3, tableaux, listes)
+    const result=await mammoth.convertToHtml({arrayBuffer});
+    // Convertir le HTML en texte structuré lisible par l'IA
+    modeleTexte=htmlToStructured(result.value).trim();
     document.getElementById('modeleLabel').textContent=`✓ ${file.name}`;
     document.getElementById('modeleLabel').style.color='var(--ink)';
     document.getElementById('btnClearModele').style.display='';
@@ -267,6 +269,25 @@ async function loadModele(e){
     showStatus('Erreur lecture modèle : '+err.message,'err');
     modeleTexte='';
   }
+}
+
+// Convertit le HTML mammoth en texte structuré avec marqueurs de niveau
+function htmlToStructured(html){
+  return html
+    .replace(/<h1[^>]*>(.*?)<\/h1>/gi,'=== $1 ===')
+    .replace(/<h2[^>]*>(.*?)<\/h2>/gi,'== $1 ==')
+    .replace(/<h3[^>]*>(.*?)<\/h3>/gi,'= $1 =')
+    .replace(/<h4[^>]*>(.*?)<\/h4>/gi,'- $1 -')
+    .replace(/<strong[^>]*>(.*?)<\/strong>/gi,'**$1**')
+    .replace(/<li[^>]*>(.*?)<\/li>/gi,'• $1')
+    .replace(/<tr[^>]*>(.*?)<\/tr>/gi,(m,p1)=>'| '+p1.replace(/<td[^>]*>(.*?)<\/td>/gi,'$1 | ')+'\n')
+    .replace(/<[^>]+>/g,'')
+    .replace(/&nbsp;/g,' ')
+    .replace(/&amp;/g,'&')
+    .replace(/&lt;/g,'<')
+    .replace(/&gt;/g,'>')
+    .replace(/\n{3,}/g,'\n\n')
+    .trim();
 }
 function clearModele(){
   modeleTexte='';
@@ -424,7 +445,7 @@ async function structurer(){
   const partSaisies=document.getElementById('participants').value.trim();
 
   const duреeSaisie=document.getElementById('duree').value.trim();
-  const modeleNote=modeleTexte?`\n\nMODÈLE DE RÉFÉRENCE — structure ton CR en suivant exactement les sections et l'organisation de ce modèle :\n${modeleTexte.substring(0,3000)}`:'';
+  const modeleNote=modeleTexte?`\n\nMODÈLE OBLIGATOIRE — Tu DOIS structurer le CR en reproduisant exactement les sections, leur ordre et leur hiérarchie tels qu'ils apparaissent dans ce modèle. Les titres de niveau === sont des sections principales, == des sous-sections, = des sous-sous-sections. Si le modèle contient des balises comme {{POINTS_ABORDES}}, {{DECISIONS}}, {{ACTIONS}}, {{PARTICIPANTS}} etc., remplace-les par le contenu correspondant extrait de la transcription. Ne crée pas de sections absentes du modèle. Voici le modèle :\n\n${modeleTexte.substring(0,4000)}\n\nFIN DU MODÈLE — Respecte cette structure pour générer le JSON.`:'';
 
   const prompt=`Tu es expert en comptes rendus professionnels.${modeleNote}
 Réunion du ${date}. Participants initialement indiqués : ${partSaisies||'non précisés'}.
