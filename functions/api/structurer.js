@@ -5,14 +5,11 @@ export async function onRequest(context) {
   };
 
   if (context.request.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
-    });
+    return new Response(null, { status: 204, headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    }});
   }
 
   if (context.request.method !== 'POST') {
@@ -20,13 +17,15 @@ export async function onRequest(context) {
   }
 
   try {
-    const { prompt } = await context.request.json();
+    const { prompt, userKey } = await context.request.json();
+    // Utiliser la clé perso si fournie, sinon la clé serveur
+    const apiKey = (userKey && userKey.trim()) ? userKey.trim() : context.env.GROQ_API_KEY;
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${context.env.GROQ_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',

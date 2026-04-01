@@ -5,14 +5,11 @@ export async function onRequest(context) {
   };
 
   if (context.request.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
-    });
+    return new Response(null, { status: 204, headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    }});
   }
 
   if (context.request.method !== 'POST') {
@@ -20,7 +17,9 @@ export async function onRequest(context) {
   }
 
   try {
-    const { base64, mimeType, filename } = await context.request.json();
+    const { base64, mimeType, filename, userKey } = await context.request.json();
+    // Utiliser la clé perso si fournie, sinon la clé serveur
+    const apiKey = (userKey && userKey.trim()) ? userKey.trim() : context.env.GROQ_API_KEY;
 
     const buffer = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
     const blob = new Blob([buffer], { type: mimeType });
@@ -41,7 +40,7 @@ export async function onRequest(context) {
 
     const response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${context.env.GROQ_API_KEY}` },
+      headers: { 'Authorization': `Bearer ${apiKey}` },
       body: form,
     });
 
