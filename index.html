@@ -180,10 +180,11 @@
       <button onclick="clearModele()" id="btnClearModele" style="display:none;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--cream);cursor:pointer;font-size:13px;color:var(--ink)">✕</button>
     </div>
   </div>
-  <!-- Demande 10 : clé Groq optionnelle -->
-  <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
-    <div style="flex:1;position:relative">
-      <input type="password" id="userGroqKey" placeholder="🔑 Clé Groq personnelle (optionnel — cliquez pour coller)" onclick="this.type='text'" onblur="this.type=this.value?'password':'text';saveUserKey()" style="width:100%;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-family:'DM Sans',sans-serif;font-size:13px;background:white;color:var(--ink);outline:none">
+  <!-- Clé Groq perso — même format que modèle -->
+  <div style="display:flex;gap:6px;align-items:center;margin-bottom:16px">
+    <div style="flex:1;min-height:48px;position:relative;display:flex;align-items:center;border:1px solid var(--border);border-radius:10px;background:white;padding:0 12px;gap:6px;cursor:text" onclick="document.getElementById('userGroqKey').focus()">
+      <span style="font-size:12px;color:var(--muted);white-space:nowrap">🔑</span>
+      <input type="password" id="userGroqKey" placeholder="Clé Groq perso (optionnel — coller ici)" onclick="this.type='text'" onblur="this.type=this.value?'password':'text';saveUserKey()" style="flex:1;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:12px;background:transparent;color:var(--ink)">
     </div>
     <button onclick="clearUserKey()" id="btnClearKey" style="display:none;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--cream);cursor:pointer;font-size:13px;color:var(--ink)">✕</button>
   </div>
@@ -254,6 +255,13 @@ function getDocxLib(){
 
 let recog=null,isRec=false,timerInt=null,secs=0;
 let finalTx='',crData=null,audioFile=null;
+let sessionStartTx=''; // Texte du textarea au démarrage de la session micro
+
+function estimateDureeFromSecs(s){
+  if(s<=0) return '';
+  const m=Math.floor(s/60), sec=s%60;
+  return m>0 ? `${m}min${sec>0?' '+sec+'s':''}` : `${sec}s`;
+}
 // ── Nom de fichier : yyyymmdd nom type ──
 function makeFilename(sujet, date, type){
   const d=(date||new Date().toISOString().split('T')[0]).replace(/-/g,'');
@@ -667,8 +675,9 @@ function startRec(){
   recog=buildRecog();if(!recog)return;
   try{recog.start();}catch(e){showStatus('Impossible de démarrer le micro.','err');return;}
   isRec=true;
-  requestWakeLock(); // Empêche le verrouillage écran
+  requestWakeLock();
   finalTx=document.getElementById('tx').value;
+  sessionStartTx=finalTx; // Mémoriser le texte avant cette session
   lastFinalSegment='';
   document.getElementById('recBtn').classList.add('on');
   document.getElementById('recLbl').textContent='Enregistrement…';
@@ -681,10 +690,10 @@ function stopRec(){
   releaseWakeLock();
   if(recog){try{recog.stop();}catch(e){}recog=null;}
   clearInterval(timerInt);
-  // Estimer la durée si champ vide
-  if(secs>0 && !document.getElementById('duree').value.trim()){
-    const m=Math.floor(secs/60), s=secs%60;
-    document.getElementById('duree').value = m>0 ? `${m}min${s>0?' '+s+'s':''}` : `${s}s`;
+  // Estimer durée si champ vide
+  if(!document.getElementById('duree').value.trim()){
+    const est=estimateDureeFromSecs(secs);
+    if(est) document.getElementById('duree').value=est;
   }
   document.getElementById('recBtn').classList.remove('on');
   document.getElementById('recLbl').textContent='Appuyer pour reprendre';
@@ -694,8 +703,17 @@ function stopRec(){
 
 // ── Structuration ──
 async function structurer(){
-  const texte=document.getElementById('tx').value.trim();
-  if(!texte){showStatus('Veuillez d\'abord enregistrer ou saisir une transcription.','err');return;}
+  const texteComplet=document.getElementById('tx').value.trim();
+  if(!texteComplet){showStatus('Veuillez d\'abord enregistrer ou saisir une transcription.','err');return;}
+
+  // N'envoyer que le texte de la session courante (évite de mélanger les sessions précédentes)
+  const texte=sessionStartTx ? texteComplet.slice(sessionStartTx.length).trim()||texteComplet : texteComplet;
+
+  // Estimer durée depuis le chrono si champ vide (cas où on structure sans avoir cliqué Stop)
+  if(!document.getElementById('duree').value.trim()){
+    const est=estimateDureeFromSecs(secs);
+    if(est) document.getElementById('duree').value=est;
+  }
   const btn=document.getElementById('btnStruct');
   btn.disabled=true;
   showStatus('<span class="spin"></span>Structuration en cours…','load');
@@ -1213,7 +1231,7 @@ async function exportPDF(){
 
 function dl(blob,mime,name){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function showStatus(msg,type){const el=document.getElementById('status');el.innerHTML=msg;el.className='status on '+(type==='load'?'s-load':type==='ok'?'s-ok':'s-err');if(type==='ok')setTimeout(()=>el.classList.remove('on'),5000);}
-function clearTx(){finalTx='';lastFinalSegment='';document.getElementById('tx').value='';document.getElementById('interim').textContent='';}
+function clearTx(){finalTx='';lastFinalSegment='';sessionStartTx='';document.getElementById('tx').value='';document.getElementById('interim').textContent='';}
 function resetAll(){
   stopRec();clearTx();crData=null;audioFile=null;
   document.getElementById('crWrap').classList.remove('on');
