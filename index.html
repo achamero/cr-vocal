@@ -109,7 +109,7 @@
   <div class="header-top">
     <h1>CR Vocal</h1>
   </div>
-  <div class="author">Conçu et réalisé par <em>A. Cham</em> &nbsp;·&nbsp; <span style="opacity:.7">© 2026</span></div>
+  <div class="author">Conçu et réalisé par <em>A. Cham</em> &nbsp;·&nbsp; <span style="opacity:.7">© 2026</span> &nbsp;·&nbsp; <span style="opacity:.55;font-size:9px">Nécessite Chrome · Android · iOS · PC</span></div>
 </header>
 
 <div class="container">
@@ -118,7 +118,7 @@
   <div class="card card-pad">
     <div class="grid2">
       <div class="full"><label>Objet de la réunion <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(optionnel — sera déduit si vide)</span></label><input type="text" id="sujet" placeholder="Ex : Comité architecture — Sprint 14"></div>
-      <div><label>Date</label><input type="date" id="date"></div>
+      <div><label>Date <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(évaluée si vide)</span></label><input type="date" id="date"></div>
       <div><label>Durée <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(évaluée si vide)</span></label><input type="text" id="duree" placeholder="Ex : 1h30"></div>
       <div class="full"><label>Participants <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(évalués si vide)</span></label><input type="text" id="participants" placeholder="A., B., C."></div>
     </div>
@@ -134,7 +134,7 @@
       <button class="rec-btn" id="recBtn" onclick="toggleRec()"><div class="dot"></div></button>
       <div class="rec-lbl" id="recLbl">Appuyer pour enregistrer</div>
       <div class="timer" id="timer"></div>
-      <div class="mic-note">⚠️ Nécessite <strong>Chrome</strong>. Sur Android : parlez par <strong>phrases courtes</strong> et marquez une pause entre chaque pour éviter les répétitions.</div>
+      <div class="mic-note">⚠️ Marquez une pause entre vos propos — cela peut éviter des répétitions de capture. L'écran restera allumé pendant l'enregistrement.</div>
     </div>
   </div>
 
@@ -146,7 +146,7 @@
       <input type="file" id="audioIn" accept="audio/*,.mp3,.aac,.m4a,.wav,.ogg,.webm,.mp4" onchange="onFileSelect(event)">
       <div style="font-size:30px;margin-bottom:8px">🎵</div>
       <p><strong>Glisser un fichier audio</strong><br>ou appuyer pour choisir</p>
-      <p style="font-size:12px;margin-top:6px">MP3 · AAC · M4A · MP4 · WAV · jusqu'à <strong>25 Mo</strong></p>
+      <p style="font-size:12px;margin-top:6px">MP3 · AAC · M4A · MP4 · WAV · jusqu'à <strong>200 Mo</strong> (traitement par segments)</p>
     </div>
     <div class="file-row" id="fileRow">
       <span class="file-nm" id="fileNm"></span>
@@ -165,8 +165,17 @@
     <div class="interim" id="interim"></div>
   </div>
 
-  <div class="row">
-    <button class="btn btn-dark" id="btnStruct" onclick="structurer()">✨ Structurer avec IA</button>
+  <!-- Structuration IA + modèle sur la même ligne -->
+  <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:500">Structure IA optionnelle — modèle Word à fournir, formaté avec zones entre balises type <code style="background:var(--cream);padding:1px 5px;border-radius:4px;font-size:11px">{{sujet}}</code></div>
+  <div class="row" style="align-items:stretch;margin-bottom:16px">
+    <button class="btn btn-dark" id="btnStruct" onclick="structurer()" style="flex:1.2">✨ Structurer avec IA</button>
+    <div style="flex:1;display:flex;gap:6px;align-items:center">
+      <div style="position:relative;flex:1;min-height:48px">
+        <input type="file" id="modeleFile" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="loadModele(event)" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
+        <div id="modeleLabel" style="height:100%;border:1px solid var(--border);border-radius:10px;padding:0 12px;font-family:'DM Sans',sans-serif;font-size:12px;background:white;color:var(--muted);display:flex;align-items:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 Modèle .docx…</div>
+      </div>
+      <button onclick="clearModele()" id="btnClearModele" style="display:none;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--cream);cursor:pointer;font-size:13px;color:var(--ink)">✕</button>
+    </div>
   </div>
 
   <div class="card cr-wrap" id="crWrap">
@@ -180,20 +189,6 @@
   </div>
 
 
-
-<!-- Champ modèle Word -->
-<div style="background:var(--paper);border-top:1px solid var(--border);padding:10px 24px 0">
-  <div style="max-width:680px;margin:0 auto">
-    <label style="display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px">📄 Modèle Word <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(optionnel — structure le CR selon ce modèle)</span></label>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-      <div style="position:relative;flex:1">
-        <input type="file" id="modeleFile" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="loadModele(event)" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
-        <div id="modeleLabel" style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:13px;background:white;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Choisir un fichier .docx…</div>
-      </div>
-      <button class="btn-sm" onclick="clearModele()" id="btnClearModele" style="display:none;background:var(--cream);color:var(--ink);border:1px solid var(--border)">✕</button>
-    </div>
-  </div>
-</div>
 
 <div class="bottom">
   <button class="btn btn-light" onclick="resetAll()" style="flex:0.5">🔄 Nouveau</button>
@@ -392,6 +387,22 @@ function markdownToPDF(md,pdf,PL,TW,startY){
 }
 
 let lastFinalSegment='';
+let wakeLock=null;
+
+// ── Wake Lock (empêche le verrouillage écran pendant l'enregistrement) ──
+async function requestWakeLock(){
+  if('wakeLock' in navigator){
+    try{ wakeLock=await navigator.wakeLock.request('screen'); }
+    catch(e){ console.warn('Wake Lock refusé:',e.message); }
+  }
+}
+async function releaseWakeLock(){
+  if(wakeLock){ try{ await wakeLock.release(); } catch(e){} wakeLock=null; }
+}
+// Ré-acquérir si l'écran se rallume
+document.addEventListener('visibilitychange',async()=>{
+  if(document.visibilityState==='visible'&&isRec&&!wakeLock) await requestWakeLock();
+});
 let modeleTexte=''; // Contenu extrait du modèle Word
 
 // ── Modèle Word ──
@@ -459,7 +470,7 @@ function onDrop(e){e.preventDefault();document.getElementById('dropZone').classL
 function onFileSelect(e){const f=e.target.files[0];if(f)prepFile(f);}
 function prepFile(file){
   const mo=(file.size/1024/1024).toFixed(1);
-  if(file.size>25*1024*1024){showStatus(`Fichier trop grand (${mo} Mo, max 25 Mo).`,'err');return;}
+  if(file.size>200*1024*1024){showStatus(`Fichier trop grand (${mo} Mo, max 200 Mo).`,'err');return;}
   document.getElementById('fileNm').textContent=`${file.name} — ${mo} Mo`;
   document.getElementById('fileRow').classList.add('on');
   audioFile={file};
@@ -471,37 +482,65 @@ function prepFile(file){
   }
 }
 
+// ── Transcription audio par segments (supporte jusqu'à 200 Mo) ──
+const CHUNK_SIZE = 4 * 1024 * 1024; // 4 Mo par chunk (limite Cloudflare Functions)
+
 async function transcribeAudio(){
   if(!audioFile) return;
   const btn=document.getElementById('btnTranscribe');
   btn.disabled=true; btn.textContent='⏳…';
-  showStatus('<span class="spin"></span>Transcription Whisper en cours…','load');
-  try{
-    // Convertir en base64 pour passer par la fonction Netlify
-    const reader = new FileReader();
-    const b64 = await new Promise((res,rej)=>{reader.onload=e=>res(e.target.result.split(',')[1]);reader.onerror=rej;reader.readAsDataURL(audioFile.file);});
-    const ext=audioFile.file.name.split('.').pop().toLowerCase();
-    const mtMap={mp3:'audio/mpeg',aac:'audio/aac',m4a:'audio/mp4',mp4:'audio/mp4',wav:'audio/wav',ogg:'audio/ogg',webm:'audio/webm'};
-    const mt=mtMap[ext]||audioFile.file.type||'audio/mpeg';
 
-    const r=await fetch('/api/transcrire',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({base64:b64,mimeType:mt,filename:audioFile.file.name})
-    });
-    const rawText=await r.text();
-    let d;try{d=JSON.parse(rawText);}catch(e){throw new Error('Réponse serveur invalide : '+rawText.substring(0,80));}
-    if(d.error) throw new Error(d.error);
-    if(!d.text) throw new Error('Transcription vide');
-    document.getElementById('tx').value=d.text;
-    // Activer les boutons export pour le transcript brut
+  const file=audioFile.file;
+  const ext=file.name.split('.').pop().toLowerCase();
+  const mtMap={mp3:'audio/mpeg',aac:'audio/aac',m4a:'audio/mp4',mp4:'audio/mp4',wav:'audio/wav',ogg:'audio/ogg',webm:'audio/webm'};
+  const mt=mtMap[ext]||file.type||'audio/mpeg';
+
+  const totalChunks=Math.ceil(file.size/CHUNK_SIZE);
+
+  try{
+    if(totalChunks===1){
+      // Fichier petit — envoi direct
+      showStatus('<span class="spin"></span>Transcription en cours…','load');
+      const text=await transcribeChunk(file,mt,file.name,0,1);
+      document.getElementById('tx').value=text;
+    } else {
+      // Gros fichier — découpage et transcription par segments
+      let fullText='';
+      for(let i=0;i<totalChunks;i++){
+        showStatus(`<span class="spin"></span>Transcription segment ${i+1}/${totalChunks}…`,'load');
+        const start=i*CHUNK_SIZE;
+        const end=Math.min(start+CHUNK_SIZE, file.size);
+        const chunkBlob=file.slice(start,end,mt);
+        // Nommer le chunk avec son extension correcte
+        const chunkFile=new File([chunkBlob],`chunk_${i}.${ext}`,{type:mt});
+        const text=await transcribeChunk(chunkFile,mt,`chunk_${i}.${ext}`,i,totalChunks);
+        fullText+=(fullText?' ':'')+text;
+        document.getElementById('tx').value=fullText;
+      }
+    }
     document.getElementById('btnWord').disabled=false;
     document.getElementById('btnPDF').disabled=false;
-    showStatus('✓ Transcription terminée. Vous pouvez exporter le transcript ou structurer avec IA.','ok');
+    showStatus('✓ Transcription terminée. Vous pouvez exporter ou structurer avec IA.','ok');
   }catch(e){
     showStatus('Erreur transcription : '+e.message,'err');
   }finally{
     btn.disabled=false; btn.textContent='Transcrire →';
   }
+}
+
+async function transcribeChunk(file, mt, filename, chunkIdx, totalChunks){
+  const reader=new FileReader();
+  const b64=await new Promise((res,rej)=>{reader.onload=e=>res(e.target.result.split(',')[1]);reader.onerror=rej;reader.readAsDataURL(file);});
+
+  const r=await fetch('/api/transcrire',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({base64:b64,mimeType:mt,filename})
+  });
+  const rawText=await r.text();
+  let d;try{d=JSON.parse(rawText);}catch(e){throw new Error('Réponse serveur invalide : '+rawText.substring(0,80));}
+  if(d.error) throw new Error(d.error);
+  if(!d.text) throw new Error(`Transcription vide (segment ${chunkIdx+1})`);
+  return d.text;
 }
 
 // ── Micro — correction répétitions Android ──
@@ -558,6 +597,7 @@ function startRec(){
   recog=buildRecog();if(!recog)return;
   try{recog.start();}catch(e){showStatus('Impossible de démarrer le micro.','err');return;}
   isRec=true;
+  requestWakeLock(); // Empêche le verrouillage écran
   finalTx=document.getElementById('tx').value;
   lastFinalSegment='';
   document.getElementById('recBtn').classList.add('on');
@@ -568,6 +608,7 @@ function startRec(){
 }
 function stopRec(){
   isRec=false;
+  releaseWakeLock();
   if(recog){try{recog.stop();}catch(e){}recog=null;}
   clearInterval(timerInt);
   document.getElementById('recBtn').classList.remove('on');
