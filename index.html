@@ -483,7 +483,9 @@ function prepFile(file){
 }
 
 // ── Transcription audio par segments (supporte jusqu'à 200 Mo) ──
-const CHUNK_SIZE = 4 * 1024 * 1024; // 4 Mo par chunk (limite Cloudflare Functions)
+const CHUNK_SIZE = 4 * 1024 * 1024; // 4 Mo par chunk
+
+async function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
 async function transcribeAudio(){
   if(!audioFile) return;
@@ -494,33 +496,59 @@ async function transcribeAudio(){
   const ext=file.name.split('.').pop().toLowerCase();
   const mtMap={mp3:'audio/mpeg',aac:'audio/aac',m4a:'audio/mp4',mp4:'audio/mp4',wav:'audio/wav',ogg:'audio/ogg',webm:'audio/webm'};
   const mt=mtMap[ext]||file.type||'audio/mpeg';
-
   const totalChunks=Math.ceil(file.size/CHUNK_SIZE);
 
   try{
-    if(totalChunks===1){
-      // Fichier petit — envoi direct
-      showStatus('<span class="spin"></span>Transcription en cours…','load');
-      const text=await transcribeChunk(file,mt,file.name,0,1);
-      document.getElementById('tx').value=text;
-    } else {
-      // Gros fichier — découpage et transcription par segments
-      let fullText='';
-      for(let i=0;i<totalChunks;i++){
-        showStatus(`<span class="spin"></span>Transcription segment ${i+1}/${totalChunks}…`,'load');
-        const start=i*CHUNK_SIZE;
-        const end=Math.min(start+CHUNK_SIZE, file.size);
-        const chunkBlob=file.slice(start,end,mt);
-        // Nommer le chunk avec son extension correcte
-        const chunkFile=new File([chunkBlob],`chunk_${i}.${ext}`,{type:mt});
-        const text=await transcribeChunk(chunkFile,mt,`chunk_${i}.${ext}`,i,totalChunks);
-        fullText+=(fullText?' ':'')+text;
-        document.getElementById('tx').value=fullText;
+    let fullText='';
+    for(let i=0;i<totalChunks;i++){
+      // Affichage progression
+      showStatus(`<span class="spin"></span>Segment ${i+1}/${totalChunks} en cours…`,'load');
+      const start=i*CHUNK_SIZE;
+      const end=Math.min(start+CHUNK_SIZE,file.size);
+      const chunkBlob=file.slice(start,end,mt);
+      const chunkFile=new File([chunkBlob],`chunk_${i}.${ext}`,{type:mt});
+
+      // Tentative avec retry automatique si rate limit
+      let text='';
+      let attempts=0;
+      while(attempts<3){
+        try{
+          text=await transcribeChunk(chunkFile,mt,`chunk_${i}.${ext}`);
+          break;
+        }catch(e){
+          const msg=e.message||'';
+          // Détecter rate limit et extraire le délai
+          const waitMatch=msg.match(/try again in\s+([\d.]+)([smh])/i);
+          if(waitMatch){
+            const val=parseFloat(waitMatch[1]);
+            const unit=waitMatch[2].toLowerCase();
+            const waitMs=unit==='h'?val*3600000:unit==='m'?val*60000:val*1000;
+            const waitSec=Math.ceil(waitMs/1000);
+            // Attente avec compte à rebours
+            for(let w=waitSec;w>0;w--){
+              showStatus(`⏳ Quota audio atteint — reprise dans ${w}s (segment ${i+1}/${totalChunks})…`,'load');
+              await sleep(1000);
+            }
+            attempts++;
+          } else {
+            throw e; // Autre erreur, on ne retente pas
+          }
+        }
+      }
+      if(!text) throw new Error(`Segment ${i+1} : échec après plusieurs tentatives`);
+
+      fullText+=(fullText&&!fullText.endsWith(' ')?' ':'')+text;
+      document.getElementById('tx').value=fullText;
+      document.getElementById('btnWord').disabled=false;
+      document.getElementById('btnPDF').disabled=false;
+
+      // Pause préventive entre segments (évite d'atteindre le quota)
+      if(i<totalChunks-1){
+        showStatus(`✓ Segment ${i+1}/${totalChunks} — pause 3s avant le suivant…`,'load');
+        await sleep(3000);
       }
     }
-    document.getElementById('btnWord').disabled=false;
-    document.getElementById('btnPDF').disabled=false;
-    showStatus('✓ Transcription terminée. Vous pouvez exporter ou structurer avec IA.','ok');
+    showStatus(`✓ Transcription terminée (${totalChunks} segment${totalChunks>1?'s':''}). Exportez ou structurez avec IA.`,'ok');
   }catch(e){
     showStatus('Erreur transcription : '+e.message,'err');
   }finally{
@@ -528,32 +556,32 @@ async function transcribeAudio(){
   }
 }
 
-async function transcribeChunk(file, mt, filename, chunkIdx, totalChunks){
+async function transcribeChunk(file, mt, filename){
   const reader=new FileReader();
   const b64=await new Promise((res,rej)=>{reader.onload=e=>res(e.target.result.split(',')[1]);reader.onerror=rej;reader.readAsDataURL(file);});
-
   const r=await fetch('/api/transcrire',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({base64:b64,mimeType:mt,filename})
   });
   const rawText=await r.text();
-  let d;try{d=JSON.parse(rawText);}catch(e){throw new Error('Réponse serveur invalide : '+rawText.substring(0,80));}
-  if(d.error) throw new Error(d.error);
-  if(!d.text) throw new Error(`Transcription vide (segment ${chunkIdx+1})`);
+  let d;try{d=JSON.parse(rawText);}catch(e){throw new Error('Réponse serveur invalide');}
+  if(d.error) throw new Error(typeof d.error==='string'?d.error:(d.error.message||JSON.stringify(d.error)));
+  if(!d.text) throw new Error('Transcription vide');
   return d.text;
 }
 
-// ── Micro — correction répétitions Android ──
-// Sur Android, SpeechRecognition redémarre et rejoue les résultats intermédiaires comme finals.
-// Solution : on ne retient que les segments vraiment nouveaux (non déjà présents dans finalTx).
+// ── Micro — mode adaptatif Android/PC ──
+// Android : mode non-continu (une phrase à la fois) — élimine les répétitions
+// PC : mode continu classique
+const isAndroid=/android/i.test(navigator.userAgent);
+
 function buildRecog(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR) return null;
   const r=new SR();
-  r.continuous=true;
+  r.continuous=!isAndroid; // Non-continu sur Android pour éviter les répétitions
   r.interimResults=true;
   r.lang='fr-FR';
-  // Sur Android, maxAlternatives=1 et on désactive continuous si nécessaire
   r.maxAlternatives=1;
 
   r.onresult=e=>{
@@ -561,8 +589,10 @@ function buildRecog(){
     for(let i=e.resultIndex;i<e.results.length;i++){
       if(e.results[i].isFinal){
         const seg=e.results[i][0].transcript.trim();
-        // Vérifier que ce segment n'est pas déjà présent à la fin de finalTx (dédoublonnage Android)
-        if(seg && !finalTx.trimEnd().endsWith(seg)){
+        if(!seg) continue;
+        // Dédoublonnage renforcé : vérifie les 2 derniers segments
+        const tail=finalTx.trimEnd().slice(-(seg.length*3));
+        if(!tail.includes(seg)){
           finalTx+=seg+' ';
           lastFinalSegment=seg;
         }
@@ -583,10 +613,12 @@ function buildRecog(){
   };
 
   r.onend=()=>{
-    if(isRec){
-      // Petit délai avant redémarrage pour éviter les boucles rapides sur Android
-      setTimeout(()=>{if(isRec){try{r.start();}catch(e){}}},300);
-    }
+    if(!isRec) return;
+    // Android non-continu : redémarrage rapide après chaque phrase
+    // PC continu : délai court pour stabilité
+    setTimeout(()=>{
+      if(isRec){ try{ r.start(); } catch(e){} }
+    }, isAndroid ? 80 : 300);
   };
   return r;
 }
