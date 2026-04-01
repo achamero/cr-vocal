@@ -109,7 +109,8 @@
   <div class="header-top">
     <h1>CR Vocal</h1>
   </div>
-  <div class="author">Conçu et réalisé par <em>A. Cham</em> &nbsp;·&nbsp; <span style="opacity:.7">© 2026</span> &nbsp;·&nbsp; <span style="opacity:.55;font-size:9px">Nécessite Chrome · Android · iOS · PC</span></div>
+  <div class="author">Conçu et réalisé par <em>A. Cham</em> &nbsp;·&nbsp; <span style="opacity:.7">© 2026</span></div>
+  <div class="author" style="margin-top:2px;font-size:9px;opacity:.55">Nécessite Chrome — Android · iOS · PC</div>
 </header>
 
 <div class="container">
@@ -165,9 +166,11 @@
     <div class="interim" id="interim"></div>
   </div>
 
-  <!-- Structuration IA + modèle sur la même ligne -->
-  <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:500">Structure IA optionnelle — modèle Word à fournir, formaté avec zones entre balises type <code style="background:var(--cream);padding:1px 5px;border-radius:4px;font-size:11px">{{sujet}}</code></div>
-  <div class="row" style="align-items:stretch;margin-bottom:16px">
+  <!-- Structuration IA -->
+  <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
+    Modèle Word optionnel avec balises <code style="background:var(--cream);padding:1px 5px;border-radius:4px;font-size:11px">{{sujet}}</code> — Clé Groq free : <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent);text-decoration:none">console.groq.com</a> <span style="opacity:.6">(limite 120 min/heure)</span>
+  </div>
+  <div class="row" style="align-items:stretch;margin-bottom:8px">
     <button class="btn btn-dark" id="btnStruct" onclick="structurer()" style="flex:1.2">✨ Structurer avec IA</button>
     <div style="flex:1;display:flex;gap:6px;align-items:center">
       <div style="position:relative;flex:1;min-height:48px">
@@ -176,6 +179,13 @@
       </div>
       <button onclick="clearModele()" id="btnClearModele" style="display:none;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--cream);cursor:pointer;font-size:13px;color:var(--ink)">✕</button>
     </div>
+  </div>
+  <!-- Demande 10 : clé Groq optionnelle -->
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
+    <div style="flex:1;position:relative">
+      <input type="password" id="userGroqKey" placeholder="🔑 Clé Groq personnelle (optionnel — cliquez pour coller)" onclick="this.type='text'" onblur="this.type=this.value?'password':'text';saveUserKey()" style="width:100%;border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-family:'DM Sans',sans-serif;font-size:13px;background:white;color:var(--ink);outline:none">
+    </div>
+    <button onclick="clearUserKey()" id="btnClearKey" style="display:none;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--cream);cursor:pointer;font-size:13px;color:var(--ink)">✕</button>
   </div>
 
   <div class="card cr-wrap" id="crWrap">
@@ -199,7 +209,35 @@
 <script>
 window.addEventListener('load',()=>{
   document.getElementById('date').value=new Date().toISOString().split('T')[0];
+  // Restaurer clé Groq perso si sauvegardée
+  const saved=localStorage.getItem('user_groq_key');
+  if(saved){
+    const el=document.getElementById('userGroqKey');
+    el.value=saved; el.type='password';
+    document.getElementById('btnClearKey').style.display='';
+  }
 });
+
+// ── Clé Groq utilisateur ──
+function saveUserKey(){
+  const k=document.getElementById('userGroqKey').value.trim();
+  if(k){
+    localStorage.setItem('user_groq_key',k);
+    document.getElementById('btnClearKey').style.display='';
+  } else {
+    localStorage.removeItem('user_groq_key');
+    document.getElementById('btnClearKey').style.display='none';
+  }
+}
+function clearUserKey(){
+  localStorage.removeItem('user_groq_key');
+  document.getElementById('userGroqKey').value='';
+  document.getElementById('userGroqKey').type='text';
+  document.getElementById('userGroqKey').placeholder='🔑 Clé Groq personnelle (optionnel — cliquez pour coller)';
+  document.getElementById('btnClearKey').style.display='none';
+}
+// Retourne la clé à utiliser : perso si saisie, sinon clé serveur (variable env)
+function getUserKey(){ return localStorage.getItem('user_groq_key')||''; }
 
 // ── Helpers ──
 function toStr(val){
@@ -561,7 +599,7 @@ async function transcribeChunk(file, mt, filename){
   const b64=await new Promise((res,rej)=>{reader.onload=e=>res(e.target.result.split(',')[1]);reader.onerror=rej;reader.readAsDataURL(file);});
   const r=await fetch('/api/transcrire',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({base64:b64,mimeType:mt,filename})
+    body:JSON.stringify({base64:b64,mimeType:mt,filename,userKey:getUserKey()})
   });
   const rawText=await r.text();
   let d;try{d=JSON.parse(rawText);}catch(e){throw new Error('Réponse serveur invalide');}
@@ -643,6 +681,11 @@ function stopRec(){
   releaseWakeLock();
   if(recog){try{recog.stop();}catch(e){}recog=null;}
   clearInterval(timerInt);
+  // Estimer la durée si champ vide
+  if(secs>0 && !document.getElementById('duree').value.trim()){
+    const m=Math.floor(secs/60), s=secs%60;
+    document.getElementById('duree').value = m>0 ? `${m}min${s>0?' '+s+'s':''}` : `${s}s`;
+  }
   document.getElementById('recBtn').classList.remove('on');
   document.getElementById('recLbl').textContent='Appuyer pour reprendre';
   document.getElementById('recLbl').classList.remove('on');
@@ -696,7 +739,7 @@ ${modeleTexte}`;
     try{
       const r=await fetch('/api/structurer',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({prompt:promptModele})
+        body:JSON.stringify({prompt:promptModele,userKey:getUserKey()})
       });
       const rawText=await r.text();
       let d;try{d=JSON.parse(rawText);}catch(e){throw new Error('Réponse serveur invalide');}
@@ -755,7 +798,7 @@ JSON brut uniquement, sans markdown, sans backticks.`;
   try{
     const r=await fetch('/api/structurer',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({prompt})
+      body:JSON.stringify({prompt,userKey:getUserKey()})
     });
     const rawText=await r.text();
     let d;try{d=JSON.parse(rawText);}catch(e){throw new Error('Réponse serveur invalide');}
