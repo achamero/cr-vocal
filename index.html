@@ -135,7 +135,7 @@
       <button class="rec-btn" id="recBtn" onclick="toggleRec()"><div class="dot"></div></button>
       <div class="rec-lbl" id="recLbl">Appuyer pour enregistrer</div>
       <div class="timer" id="timer"></div>
-      <div class="mic-note">⚠️ Marquez une pause entre vos propos — cela peut éviter des répétitions de capture. L'écran restera allumé pendant l'enregistrement.</div>
+      <div class="mic-note" style="font-size:11px">🔒 Écran maintenu allumé pendant l'enregistrement.</div>
     </div>
   </div>
 
@@ -147,7 +147,7 @@
       <input type="file" id="audioIn" accept="audio/*,.mp3,.aac,.m4a,.wav,.ogg,.webm,.mp4" onchange="onFileSelect(event)">
       <div style="font-size:30px;margin-bottom:8px">🎵</div>
       <p><strong>Glisser un fichier audio</strong><br>ou appuyer pour choisir</p>
-      <p style="font-size:12px;margin-top:6px">MP3 · AAC · M4A · MP4 · WAV · jusqu'à <strong>200 Mo</strong> (traitement par segments)</p>
+      <p style="font-size:12px;margin-top:6px">MP3 · AAC · M4A · MP4 · WAV · traitement par segments</p>
     </div>
     <div class="file-row" id="fileRow">
       <span class="file-nm" id="fileNm"></span>
@@ -168,25 +168,28 @@
 
   <!-- Structuration IA -->
   <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
-    Modèle Word optionnel avec balises <code style="background:var(--cream);padding:1px 5px;border-radius:4px;font-size:11px">{{sujet}}</code> — Clé Groq free : <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent);text-decoration:none">console.groq.com</a> <span style="opacity:.6">(limite 120 min/heure)</span>
+    Modèle Word optionnel avec balises <code style="background:var(--cream);padding:1px 5px;border-radius:4px;font-size:11px">{{sujet}}</code> — clé IA gratuite : <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent);text-decoration:none">console.groq.com</a> <span style="opacity:.6">(limite 120 min/heure)</span>
   </div>
-  <div class="row" style="align-items:stretch;margin-bottom:8px">
+  <div class="row" style="align-items:stretch;margin-bottom:16px">
     <button class="btn btn-dark" id="btnStruct" onclick="structurer()" style="flex:1.2">✨ Structurer avec IA</button>
-    <div style="flex:1;display:flex;gap:6px;align-items:center">
-      <div style="position:relative;flex:1;min-height:48px">
-        <input type="file" id="modeleFile" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="loadModele(event)" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
-        <div id="modeleLabel" style="height:100%;border:1px solid var(--border);border-radius:10px;padding:0 12px;font-family:'DM Sans',sans-serif;font-size:12px;background:white;color:var(--muted);display:flex;align-items:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 Modèle .docx…</div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+      <!-- Modèle Word -->
+      <div style="display:flex;gap:6px;align-items:center;flex:1">
+        <div style="position:relative;flex:1;min-height:44px">
+          <input type="file" id="modeleFile" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="loadModele(event)" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
+          <div id="modeleLabel" style="height:100%;border:1px solid var(--border);border-radius:10px;padding:0 10px;font-family:'DM Sans',sans-serif;font-size:11px;background:white;color:var(--muted);display:flex;align-items:center;gap:4px;overflow:hidden;white-space:nowrap">📄 Modèle .docx…</div>
+        </div>
+        <button onclick="clearModele()" id="btnClearModele" style="display:none;padding:5px 8px;border-radius:8px;border:1px solid var(--border);background:var(--cream);cursor:pointer;font-size:12px;color:var(--ink)">✕</button>
       </div>
-      <button onclick="clearModele()" id="btnClearModele" style="display:none;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--cream);cursor:pointer;font-size:13px;color:var(--ink)">✕</button>
+      <!-- Clé IA gratuite -->
+      <div style="display:flex;gap:6px;align-items:center;flex:1">
+        <div style="flex:1;min-height:44px;display:flex;align-items:center;border:1px solid var(--border);border-radius:10px;background:white;padding:0 10px;gap:4px;cursor:text" onclick="document.getElementById('userGroqKey').focus()">
+          <span style="font-size:11px;color:var(--muted);white-space:nowrap">🔑</span>
+          <input type="password" id="userGroqKey" placeholder="Clé IA gratuite (optionnel)" onclick="this.type='text'" onblur="this.type=this.value?'password':'text';saveUserKey()" style="flex:1;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:11px;background:transparent;color:var(--ink)">
+        </div>
+        <button onclick="clearUserKey()" id="btnClearKey" style="display:none;padding:5px 8px;border-radius:8px;border:1px solid var(--border);background:var(--cream);cursor:pointer;font-size:12px;color:var(--ink)">✕</button>
+      </div>
     </div>
-  </div>
-  <!-- Clé Groq perso — même format que modèle -->
-  <div style="display:flex;gap:6px;align-items:center;margin-bottom:16px">
-    <div style="flex:1;min-height:48px;position:relative;display:flex;align-items:center;border:1px solid var(--border);border-radius:10px;background:white;padding:0 12px;gap:6px;cursor:text" onclick="document.getElementById('userGroqKey').focus()">
-      <span style="font-size:12px;color:var(--muted);white-space:nowrap">🔑</span>
-      <input type="password" id="userGroqKey" placeholder="Clé Groq perso (optionnel — coller ici)" onclick="this.type='text'" onblur="this.type=this.value?'password':'text';saveUserKey()" style="flex:1;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:12px;background:transparent;color:var(--ink)">
-    </div>
-    <button onclick="clearUserKey()" id="btnClearKey" style="display:none;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--cream);cursor:pointer;font-size:13px;color:var(--ink)">✕</button>
   </div>
 
   <div class="card cr-wrap" id="crWrap">
@@ -516,7 +519,7 @@ function onDrop(e){e.preventDefault();document.getElementById('dropZone').classL
 function onFileSelect(e){const f=e.target.files[0];if(f)prepFile(f);}
 function prepFile(file){
   const mo=(file.size/1024/1024).toFixed(1);
-  if(file.size>200*1024*1024){showStatus(`Fichier trop grand (${mo} Mo, max 200 Mo).`,'err');return;}
+  // Pas de limite de taille — traitement par segments
   document.getElementById('fileNm').textContent=`${file.name} — ${mo} Mo`;
   document.getElementById('fileRow').classList.add('on');
   audioFile={file};
@@ -529,7 +532,7 @@ function prepFile(file){
 }
 
 // ── Transcription audio par segments (supporte jusqu'à 200 Mo) ──
-const CHUNK_SIZE = 4 * 1024 * 1024; // 4 Mo par chunk
+const CHUNK_SIZE = 10 * 1024 * 1024; // 10 Mo par chunk
 
 async function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
@@ -590,8 +593,7 @@ async function transcribeAudio(){
 
       // Pause préventive entre segments (évite d'atteindre le quota)
       if(i<totalChunks-1){
-        showStatus(`✓ Segment ${i+1}/${totalChunks} — pause 3s avant le suivant…`,'load');
-        await sleep(3000);
+        await sleep(1000); // Pause 1s entre segments
       }
     }
     showStatus(`✓ Transcription terminée (${totalChunks} segment${totalChunks>1?'s':''}). Exportez ou structurez avec IA.`,'ok');
@@ -603,14 +605,41 @@ async function transcribeAudio(){
 }
 
 async function transcribeChunk(file, mt, filename){
-  const reader=new FileReader();
-  const b64=await new Promise((res,rej)=>{reader.onload=e=>res(e.target.result.split(',')[1]);reader.onerror=rej;reader.readAsDataURL(file);});
-  const r=await fetch('/api/transcrire',{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({base64:b64,mimeType:mt,filename,userKey:getUserKey()})
+  // Appel direct à Groq depuis le navigateur (pas de timeout Cloudflare)
+  // Groq autorise CORS pour l'API audio
+  const userKey=getUserKey();
+  // Si pas de clé perso, passer par le serveur Cloudflare (qui a la clé env)
+  if(!userKey){
+    const reader=new FileReader();
+    const b64=await new Promise((res,rej)=>{reader.onload=e=>res(e.target.result.split(',')[1]);reader.onerror=rej;reader.readAsDataURL(file);});
+    const r=await fetch('/api/transcrire',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({base64:b64,mimeType:mt,filename})
+    });
+    const rawText=await r.text();
+    let d;try{d=JSON.parse(rawText);}catch(e){throw new Error('Réponse invalide ('+rawText.substring(0,300)+')');}
+    if(d.error) throw new Error(typeof d.error==='string'?d.error:(d.error.message||JSON.stringify(d.error)));
+    if(!d.text) throw new Error('Transcription vide');
+    return d.text;
+  }
+  // Avec clé perso : appel direct Groq (pas de limite de timeout)
+  const form=new FormData();
+  let safeFile=file;
+  const ext=filename.split('.').pop().toLowerCase();
+  if(ext==='aac'||ext==='m4a'){
+    safeFile=new File([file],filename.replace(/\.(aac|m4a)$/i,'.mp4'),{type:'audio/mp4'});
+  }
+  form.append('file',safeFile,safeFile.name);
+  form.append('model','whisper-large-v3-turbo');
+  form.append('language','fr');
+  form.append('response_format','json');
+  const r=await fetch('https://api.groq.com/openai/v1/audio/transcriptions',{
+    method:'POST',
+    headers:{'Authorization':`Bearer ${userKey}`},
+    body:form
   });
   const rawText=await r.text();
-  let d;try{d=JSON.parse(rawText);}catch(e){throw new Error('Réponse serveur invalide');}
+  let d;try{d=JSON.parse(rawText);}catch(e){throw new Error('Réponse Groq invalide ('+rawText.substring(0,200)+')');}
   if(d.error) throw new Error(typeof d.error==='string'?d.error:(d.error.message||JSON.stringify(d.error)));
   if(!d.text) throw new Error('Transcription vide');
   return d.text;
