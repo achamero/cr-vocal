@@ -135,7 +135,7 @@
       <button class="rec-btn" id="recBtn" onclick="toggleRec()"><div class="dot"></div></button>
       <div class="rec-lbl" id="recLbl">Appuyer pour enregistrer</div>
       <div class="timer" id="timer"></div>
-      <div class="mic-note" style="font-size:11px">🔒 Écran maintenu allumé pendant l'enregistrement.</div>
+      <div class="mic-note" style="font-size:11px">🔒 Écran maintenu allumé. Sur Android : tenez le téléphone stable, parlez distinctement à 20-30 cm, évitez le bruit de fond.</div>
     </div>
   </div>
 
@@ -147,7 +147,7 @@
       <input type="file" id="audioIn" accept="audio/*,.mp3,.aac,.m4a,.wav,.ogg,.webm,.mp4" onchange="onFileSelect(event)">
       <div style="font-size:30px;margin-bottom:8px">🎵</div>
       <p><strong>Glisser un fichier audio</strong><br>ou appuyer pour choisir</p>
-      <p style="font-size:12px;margin-top:6px">MP3 · AAC · M4A · MP4 · WAV · traitement par segments</p>
+      <p style="font-size:12px;margin-top:6px">MP3 · AAC · M4A · MP4 · WAV · segments de 10 Mo</p>
     </div>
     <div class="file-row" id="fileRow">
       <span class="file-nm" id="fileNm"></span>
@@ -171,7 +171,7 @@
     Modèle Word optionnel avec balises <code style="background:var(--cream);padding:1px 5px;border-radius:4px;font-size:11px">{{sujet}}</code> — clé IA gratuite : <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent);text-decoration:none">console.groq.com</a> <span style="opacity:.6">(limite 120 min/heure)</span>
   </div>
   <div class="row" style="align-items:stretch;margin-bottom:16px">
-    <button class="btn btn-dark" id="btnStruct" onclick="structurer()" style="flex:1.2">✨ Structurer avec IA</button>
+    <button class="btn btn-dark" id="btnStruct" onclick="structurer()" style="flex:1.2;padding:9px 14px;font-size:13px">✨ Structurer avec IA</button>
     <div style="flex:1;display:flex;flex-direction:column;gap:6px">
       <!-- Modèle Word -->
       <div style="display:flex;gap:6px;align-items:center;flex:1">
