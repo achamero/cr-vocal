@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CR Vocal — User Stories</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --ink: #1a1a1f; --paper: #f5f2ec; --cream: #ede9e0;
+    --accent: #c8440a; --accent-light: #f0c4b0;
+    --muted: #7a7570; --border: #d4cfc6;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(--ink); line-height: 1.7; }
+
+  .page { max-width: 800px; margin: 0 auto; padding: 40px 32px 80px; }
+
+  /* Header */
+  .doc-header { border-bottom: 2px solid var(--ink); padding-bottom: 20px; margin-bottom: 40px; }
+  .doc-header h1 { font-family: 'DM Serif Display', serif; font-size: 32px; margin-bottom: 6px; }
+  .doc-header .meta { font-size: 13px; color: var(--muted); display: flex; gap: 16px; flex-wrap: wrap; }
+  .doc-header .meta span { display: flex; align-items: center; gap: 4px; }
+
+  /* Sections */
+  h2 { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--ink); margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 15px; font-weight: 700; color: var(--accent); margin: 24px 0 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  p { margin-bottom: 12px; font-size: 15px; }
+
+  /* Steps */
+  .steps { counter-reset: step; }
+  .step { display: flex; gap: 16px; margin-bottom: 20px; align-items: flex-start; }
+  .step-num { counter-increment: step; min-width: 36px; height: 36px; background: var(--ink); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+  .step-num::before { content: counter(step); }
+  .step-body { flex: 1; }
+  .step-body strong { display: block; font-size: 15px; margin-bottom: 4px; }
+  .step-body span { font-size: 14px; color: var(--muted); }
+
+  /* Tips */
+  .tip { background: white; border-left: 3px solid var(--accent); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 14px; }
+  .tip strong { color: var(--accent); }
+
+  .warn { background: #fffbeb; border-left: 3px solid #f59e0b; padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 14px; }
+  .warn strong { color: #92400e; }
+
+  /* User stories */
+  .us-grid { display: grid; gap: 12px; }
+  .us { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .us-id { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); font-weight: 600; margin-bottom: 4px; }
+  .us-title { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+  .us-story { font-size: 13px; color: var(--muted); font-style: italic; margin-bottom: 8px; }
+  .us-criteria { font-size: 13px; }
+  .us-criteria li { margin-bottom: 2px; margin-left: 16px; }
+  .us-tag { display: inline-block; font-size: 10px; font-family: 'DM Mono', monospace; padding: 2px 7px; border-radius: 20px; font-weight: 500; margin-right: 4px; }
+  .tag-core { background: #dbeafe; color: #1e40af; }
+  .tag-ai { background: #d1fae5; color: #065f46; }
+  .tag-export { background: #fce7f3; color: #9d174d; }
+  .tag-ux { background: #ffedd5; color: #9a3412; }
+  .tag-android { background: #f3e8ff; color: #6b21a8; }
+
+  /* Balises */
+  code { background: var(--cream); padding: 1px 6px; border-radius: 4px; font-family: 'DM Mono', monospace; font-size: 13px; }
+
+  /* Keyboard shortcuts */
+  .kbd { display: inline-block; background: var(--cream); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: 'DM Mono', monospace; font-size: 12px; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th { background: var(--cream); padding: 8px 12px; text-align: left; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); border-bottom: 2px solid var(--border); }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: #fafaf8; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+  @media print {
+    body { background: white; }
+    .page { padding: 20px; }
+    h2 { page-break-before: always; }
+    h2:first-of-type { page-break-before: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="doc-header">
+    <h1>CR Vocal</h1>
+    <p style="font-size:15px;color:var(--muted);margin:6px 0 14px">Application de compte rendu assistée par IA — Guide utilisateur & Spécifications</p>
+    <div class="meta">
+      <span>📅 Avril 2026</span>
+      <span>✍️ Conçu et réalisé par A. Cham</span>
+      <span>🤖 IA : Groq (Llama 3.3 + Whisper)</span>
+      <span>🌐 Chrome · Android · iOS · PC</span>
+    </div>
+  </div>
+
+   <!-- ══════════════════════════════════════════════
+       USER STORIES
+  ══════════════════════════════════════════════ -->
+  <h2>User Stories</h2>
+
+  <h3>🎙 Capture audio</h3>
+  <div class="us-grid">
+
+    <div class="us">
+      <div class="us-id">US-01 <span class="us-tag tag-core">CORE</span><span class="us-tag tag-android">ANDROID</span></div>
+      <div class="us-title">Dictée micro en temps réel</div>
+      <div class="us-story">En tant qu'utilisateur, je veux dicter ma réunion à voix haute pour obtenir une transcription automatique sans saisir de texte.</div>
+      <ul class="us-criteria">
+        <li>Le micro démarre au clic sur le bouton rouge</li>
+        <li>La transcription s'affiche en temps réel</li>
+        <li>L'écran reste allumé (Wake Lock)</li>
+        <li>Sur Android : mode non-continu pour réduire les répétitions</li>
+        <li>La durée de session est estimée automatiquement</li>
+      </ul>
+    </div>
+
+    <div class="us">
+      <div class="us-id">US-02 <span class="us-tag tag-core">CORE</span></div>
+      <div class="us-title">Import fichier audio</div>
+      <div class="us-story">En tant qu'utilisateur, je veux importer un enregistrement audio existant pour le transcrire sans avoir à dicter en temps réel.</div>
+      <ul class="us-criteria">
+        <li>Formats supportés : MP3, AAC, M4A, WAV, OGG, WebM</li>
+        <li>Fichiers volumineux découpés automatiquement en segments de 10 Mo</li>
+        <li>Progression affichée segment par segment</li>
+        <li>Gestion automatique du quota Groq avec attente et retry</li>
+        <li>Glisser-déposer et sélection par clic supportés</li>
+      </ul>
+    </div>
+
+    <div class="us">
+      <div class="us-id">US-03 <span class="us-tag tag-core">CORE</span></div>
+      <div class="us-title">Saisie ou collage manuel</div>
+      <div class="us-story">En tant qu'utilisateur, je veux pouvoir coller ou saisir du texte directement dans la zone de transcription.</div>
+      <ul class="us-criteria">
+        <li>Zone de texte éditable librement</li>
+        <li>Bouton "Effacer" disponible</li>
+        <li>Les boutons export s'activent dès qu'il y a du texte</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <h3>🤖 Structuration IA</h3>
+  <div class="us-grid">
+
+    <div class="us">
+      <div class="us-id">US-04 <span class="us-tag tag-ai">IA</span></div>
+      <div class="us-title">Structuration automatique du CR</div>
+      <div class="us-story">En tant qu'utilisateur, je veux que l'IA transforme ma transcription brute en compte rendu structuré et lisible.</div>
+      <ul class="us-criteria">
+        <li>Sections : objet & contexte, participants, points abordés, décisions, actions (tableau Qui/Quoi/Quand), prochaine étape</li>
+        <li>Chaque point développé : contexte, irritant, besoin, propositions, points saillants</li>
+        <li>Sections vides masquées automatiquement</li>
+        <li>Titre auto-généré si non saisi</li>
+      </ul>
+    </div>
+
+    <div class="us">
+      <div class="us-id">US-05 <span class="us-tag tag-ai">IA</span></div>
+      <div class="us-title">Estimation automatique des métadonnées</div>
+      <div class="us-story">En tant qu'utilisateur, je ne veux pas avoir à renseigner manuellement tous les champs s'ils peuvent être déduits.</div>
+      <ul class="us-criteria">
+        <li>Titre déduit du contenu si champ vide</li>
+        <li>Participants identifiés dans la transcription</li>
+        <li>Durée estimée depuis le chrono micro ou la transcription</li>
+        <li>Date extraite de la date du fichier audio</li>
+      </ul>
+    </div>
+
+    <div class="us">
+      <div class="us-id">US-06 <span class="us-tag tag-ai">IA</span></div>
+      <div class="us-title">Modèle Word personnalisé</div>
+      <div class="us-story">En tant qu'utilisateur, je veux que l'IA remplisse mon propre modèle de CR plutôt qu'un format générique.</div>
+      <ul class="us-criteria">
+        <li>Upload d'un fichier .docx comme modèle</li>
+        <li>Structure extraite et transmise à l'IA</li>
+        <li>Balises <code>{{...}}</code> remplacées intelligemment</li>
+        <li>Toute balise descriptive est interprétée</li>
+        <li>Modèle conservé entre les sessions</li>
+      </ul>
+    </div>
+
+    <div class="us">
+      <div class="us-id">US-07 <span class="us-tag tag-ai">IA</span></div>
+      <div class="us-title">Clé IA personnelle</div>
+      <div class="us-story">En tant qu'utilisateur avancé, je veux utiliser mon propre compte Groq pour ne pas dépendre du quota partagé.</div>
+      <ul class="us-criteria">
+        <li>Champ de saisie de clé Groq dans l'interface</li>
+        <li>Clé sauvegardée localement (localStorage)</li>
+        <li>Transcription audio directe depuis le navigateur (pas de timeout serveur)</li>
+        <li>Lien vers console.groq.com pour créer une clé</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <h3>📤 Export</h3>
+  <div class="us-grid">
+
+    <div class="us">
+      <div class="us-id">US-08 <span class="us-tag tag-export">EXPORT</span></div>
+      <div class="us-title">Export Word (.docx)</div>
+      <div class="us-story">En tant qu'utilisateur, je veux exporter mon CR en fichier Word éditable.</div>
+      <ul class="us-criteria">
+        <li>Génération côté navigateur (pas de serveur)</li>
+        <li>Titres hiérarchisés, listes, tableaux</li>
+        <li>Métadonnées : auteur "Cham IA", titre, mots-clés</li>
+        <li>Nommage : <code>yyyymmdd Nom CR.docx</code></li>
+        <li>Si CR non structuré : export du transcript brut</li>
+      </ul>
+    </div>
+
+    <div class="us">
+      <div class="us-id">US-09 <span class="us-tag tag-export">EXPORT</span></div>
+      <div class="us-title">Export PDF</div>
+      <div class="us-story">En tant qu'utilisateur, je veux exporter mon CR en PDF prêt à partager.</div>
+      <ul class="us-criteria">
+        <li>Rendu multi-page avec pagination automatique</li>
+        <li>Métadonnées PDF : auteur, titre, mots-clés</li>
+        <li>Nommage : <code>yyyymmdd Nom CR.pdf</code></li>
+        <li>Si CR non structuré : export du transcript brut</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <h3>🎨 Expérience utilisateur</h3>
+  <div class="us-grid">
+
+    <div class="us">
+      <div class="us-id">US-10 <span class="us-tag tag-ux">UX</span></div>
+      <div class="us-title">Interface mobile-first</div>
+      <div class="us-story">En tant qu'utilisateur sur smartphone, je veux une interface adaptée à l'écran de mon téléphone.</div>
+      <ul class="us-criteria">
+        <li>Responsive sur tous les formats d'écran</li>
+        <li>Boutons suffisamment larges pour une utilisation tactile</li>
+        <li>Installable en PWA via "Ajouter à l'écran d'accueil"</li>
+      </ul>
+    </div>
+
+    <div class="us">
+      <div class="us-id">US-11 <span class="us-tag tag-ux">UX</span></div>
+      <div class="us-title">Réinitialisation sans perdre le modèle</div>
+      <div class="us-story">En tant qu'utilisateur, je veux pouvoir démarrer un nouveau CR sans avoir à recharger le modèle Word ou la clé.</div>
+      <ul class="us-criteria">
+        <li>Bouton "🔄 Nouveau" remet à zéro transcription, CR et métadonnées</li>
+        <li>Modèle Word et clé IA conservés</li>
+        <li>Date remise à aujourd'hui automatiquement</li>
+      </ul>
+    </div>
+
+    <div class="us">
+      <div class="us-id">US-12 <span class="us-tag tag-ux">UX</span></div>
+      <div class="us-title">Prévisualisation du CR avant export</div>
+      <div class="us-story">En tant qu'utilisateur, je veux voir le CR structuré dans l'interface avant d'exporter.</div>
+      <ul class="us-criteria">
+        <li>CR affiché dans l'app après structuration</li>
+        <li>Mode modèle : aperçu Markdown rendu en HTML</li>
+        <li>Mode standard : sections organisées avec tableaux</li>
+      </ul>
+    </div>
+
+    <div class="us">
+      <div class="us-id">US-13 <span class="us-tag tag-android">ANDROID</span></div>
+      <div class="us-title">Maintien de l'écran allumé</div>
+      <div class="us-story">En tant qu'utilisateur sur Android, je veux que l'écran reste allumé pendant l'enregistrement pour ne pas interrompre la dictée.</div>
+      <ul class="us-criteria">
+        <li>Wake Lock API activée au démarrage de l'enregistrement</li>
+        <li>Wake Lock ré-acquise si l'écran se rallume</li>
+        <li>Libérée à l'arrêt de l'enregistrement</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <hr class="divider">
+
+  <p style="font-size:12px;color:var(--muted);text-align:right">CR Vocal · Conçu et réalisé par A. Cham · © 2026 · Propulsé par Groq (Llama 3.3-70B + Whisper large-v3-turbo)</p>
+
+</div>
+</body>
+</html>

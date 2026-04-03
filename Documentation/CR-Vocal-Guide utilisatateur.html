@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CR Vocal — Guide</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --ink: #1a1a1f; --paper: #f5f2ec; --cream: #ede9e0;
+    --accent: #c8440a; --accent-light: #f0c4b0;
+    --muted: #7a7570; --border: #d4cfc6;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(--ink); line-height: 1.7; }
+
+  .page { max-width: 800px; margin: 0 auto; padding: 40px 32px 80px; }
+
+  /* Header */
+  .doc-header { border-bottom: 2px solid var(--ink); padding-bottom: 20px; margin-bottom: 40px; }
+  .doc-header h1 { font-family: 'DM Serif Display', serif; font-size: 32px; margin-bottom: 6px; }
+  .doc-header .meta { font-size: 13px; color: var(--muted); display: flex; gap: 16px; flex-wrap: wrap; }
+  .doc-header .meta span { display: flex; align-items: center; gap: 4px; }
+
+  /* Sections */
+  h2 { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--ink); margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 15px; font-weight: 700; color: var(--accent); margin: 24px 0 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  p { margin-bottom: 12px; font-size: 15px; }
+
+  /* Steps */
+  .steps { counter-reset: step; }
+  .step { display: flex; gap: 16px; margin-bottom: 20px; align-items: flex-start; }
+  .step-num { counter-increment: step; min-width: 36px; height: 36px; background: var(--ink); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+  .step-num::before { content: counter(step); }
+  .step-body { flex: 1; }
+  .step-body strong { display: block; font-size: 15px; margin-bottom: 4px; }
+  .step-body span { font-size: 14px; color: var(--muted); }
+
+  /* Tips */
+  .tip { background: white; border-left: 3px solid var(--accent); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 14px; }
+  .tip strong { color: var(--accent); }
+
+  .warn { background: #fffbeb; border-left: 3px solid #f59e0b; padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 12px 0; font-size: 14px; }
+  .warn strong { color: #92400e; }
+
+  /* User stories */
+  .us-grid { display: grid; gap: 12px; }
+  .us { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .us-id { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); font-weight: 600; margin-bottom: 4px; }
+  .us-title { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+  .us-story { font-size: 13px; color: var(--muted); font-style: italic; margin-bottom: 8px; }
+  .us-criteria { font-size: 13px; }
+  .us-criteria li { margin-bottom: 2px; margin-left: 16px; }
+  .us-tag { display: inline-block; font-size: 10px; font-family: 'DM Mono', monospace; padding: 2px 7px; border-radius: 20px; font-weight: 500; margin-right: 4px; }
+  .tag-core { background: #dbeafe; color: #1e40af; }
+  .tag-ai { background: #d1fae5; color: #065f46; }
+  .tag-export { background: #fce7f3; color: #9d174d; }
+  .tag-ux { background: #ffedd5; color: #9a3412; }
+  .tag-android { background: #f3e8ff; color: #6b21a8; }
+
+  /* Balises */
+  code { background: var(--cream); padding: 1px 6px; border-radius: 4px; font-family: 'DM Mono', monospace; font-size: 13px; }
+
+  /* Keyboard shortcuts */
+  .kbd { display: inline-block; background: var(--cream); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: 'DM Mono', monospace; font-size: 12px; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th { background: var(--cream); padding: 8px 12px; text-align: left; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); border-bottom: 2px solid var(--border); }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: #fafaf8; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+  @media print {
+    body { background: white; }
+    .page { padding: 20px; }
+    h2 { page-break-before: always; }
+    h2:first-of-type { page-break-before: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="doc-header">
+    <h1>CR Vocal</h1>
+    <p style="font-size:15px;color:var(--muted);margin:6px 0 14px">Application de compte rendu assistée par IA — Guide utilisateur</p>
+    <div class="meta">
+      <span>📅 Avril 2026</span>
+      <span>✍️ Conçu et réalisé par A. Cham</span>
+      <span>🤖 IA : Groq (Llama 3.3 + Whisper)</span>
+      <span>🌐 Chrome · Android · iOS · PC</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       GUIDE UTILISATEUR
+  ══════════════════════════════════════════════ -->
+  <h2>Guide utilisateur</h2>
+
+  <h3>Présentation</h3>
+  <p>CR Vocal transforme un enregistrement audio ou une dictée en compte rendu structuré, prêt à exporter en Word ou PDF. L'application fonctionne entièrement dans le navigateur Chrome, sans installation.</p>
+
+  <div class="tip"><strong>Prérequis :</strong> Chrome sur Android, iOS ou PC. Une connexion internet est nécessaire pour la transcription et la structuration IA.</div>
+
+  <hr class="divider" style="margin:20px 0">
+
+  <h3>Workflow standard</h3>
+  <div class="steps">
+
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <strong>Renseigner les métadonnées</strong>
+        <span>Objet, date, durée, participants — tous les champs sont optionnels et seront déduits ou estimés automatiquement si laissés vides.</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <strong>Choisir la source audio</strong>
+        <span>Onglet <strong>🎙 Dictée micro</strong> pour dicter en temps réel, ou onglet <strong>📁 Fichier audio</strong> pour importer un enregistrement (MP3, AAC, M4A, WAV…).</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <strong>Obtenir la transcription</strong>
+        <span>En dictée : la transcription s'affiche en temps réel. Pour un fichier : cliquer sur <strong>Transcrire →</strong>. Vous pouvez aussi coller du texte directement dans le champ.</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <strong>Structurer avec l'IA</strong>
+        <span>Cliquer sur <strong>✨ Structurer avec IA</strong>. L'IA organise la transcription en sections : objet, participants, points abordés, décisions, actions, prochaine étape.</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <strong>Exporter</strong>
+        <span>Boutons <strong>⬇ Word</strong> et <strong>⬇ PDF</strong> dans la barre du bas. Le fichier est nommé automatiquement : <code>yyyymmdd Nom Réunion CR.docx</code></span>
+      </div>
+    </div>
+
+  </div>
+
+  <hr class="divider" style="margin:20px 0">
+
+  <h3>Dictée micro</h3>
+  <p>Appuyer sur le bouton rouge pour démarrer, appuyer à nouveau pour arrêter. La transcription s'accumule en temps réel. L'écran reste allumé pendant l'enregistrement (Wake Lock).</p>
+
+  <div class="warn"><strong>Sur Android :</strong> Chrome peut interrompre le micro après quelques minutes si l'application passe en arrière-plan. Garder l'écran allumé et l'application au premier plan. Parler distinctement à 20-30 cm du micro, éviter le bruit de fond.</div>
+
+  <div class="tip"><strong>Astuce :</strong> Marquer une courte pause entre chaque phrase réduit les répétitions de capture sur Android.</div>
+
+  <hr class="divider" style="margin:20px 0">
+
+  <h3>Import fichier audio</h3>
+  <p>Glisser-déposer ou sélectionner un fichier. Les fichiers volumineux sont automatiquement découpés en segments de 10 Mo et transcrits séquentiellement. La progression est affichée.</p>
+
+  <div class="tip"><strong>Quota Groq :</strong> La limite gratuite est de 120 minutes d'audio par heure. En cas de dépassement, l'application attend automatiquement le délai indiqué par Groq avant de reprendre.</div>
+
+  <hr class="divider" style="margin:20px 0">
+
+  <h3>Modèle Word personnalisé</h3>
+  <p>Vous pouvez fournir un fichier <code>.docx</code> comme modèle de mise en forme. Insérez des balises <code>{{...}}</code> aux endroits où l'IA doit insérer du contenu :</p>
+
+  <table>
+    <tr><th>Balise</th><th>Contenu inséré</th></tr>
+    <tr><td><code>{{sujet}}</code> ou <code>{{objet}}</code></td><td>Titre ou objet de la réunion</td></tr>
+    <tr><td><code>{{date}}</code></td><td>Date de la réunion</td></tr>
+    <tr><td><code>{{durée}}</code></td><td>Durée estimée ou saisie</td></tr>
+    <tr><td><code>{{participants}}</code></td><td>Liste des participants identifiés</td></tr>
+    <tr><td><code>{{nombre de participants}}</code></td><td>Nombre de participants</td></tr>
+    <tr><td><code>{{points abordés}}</code></td><td>Développement des points discutés</td></tr>
+    <tr><td><code>{{décisions}}</code></td><td>Décisions prises</td></tr>
+    <tr><td><code>{{actions}}</code></td><td>Actions à mener (qui, quoi, quand)</td></tr>
+    <tr><td><code>{{prochaine étape}}</code></td><td>Prochains jalons</td></tr>
+    <tr><td><code>{{n'importe quelle balise}}</code></td><td>L'IA interprète et remplit intelligemment</td></tr>
+  </table>
+
+  <div class="tip"><strong>Sans modèle :</strong> L'IA utilise une structure standard avec sections fixes (objet, participants, points, décisions, actions, agenda).</div>
+
+  <hr class="divider" style="margin:20px 0">
+
+  <h3>Clé IA gratuite</h3>
+  <p>L'application utilise par défaut une clé Groq partagée. Pour éviter les limites de quota ou utiliser votre propre compte :</p>
+  <ol style="margin-left:20px;font-size:14px;margin-bottom:12px">
+    <li>Créer un compte gratuit sur <strong>console.groq.com</strong></li>
+    <li>Générer une clé API (API Keys → Create API Key)</li>
+    <li>Coller la clé dans le champ 🔑 de l'application</li>
+  </ol>
+  <p>La clé est sauvegardée localement dans votre navigateur et n'est jamais transmise ailleurs que vers Groq directement.</p>
+
+  <hr class="divider" style="margin:20px 0">
+
+  <h3>Propriétés des fichiers exportés</h3>
+  <table>
+    <tr><th>Propriété</th><th>Valeur</th></tr>
+    <tr><td>Auteur</td><td>Cham IA</td></tr>
+    <tr><td>Titre</td><td>Objet de la réunion</td></tr>
+    <tr><td>Mots-clés</td><td>Objet + participants + titres des points abordés</td></tr>
+    <tr><td>Nommage</td><td><code>yyyymmdd Nom CR.docx</code> ou <code>yyyymmdd Nom Transcript.pdf</code></td></tr>
+  </table>
+
+  </div>
+
+  <hr class="divider">
+
+  <p style="font-size:12px;color:var(--muted);text-align:right">CR Vocal · Conçu et réalisé par A. Cham · © 2026 · Propulsé par Groq (Llama 3.3-70B + Whisper large-v3-turbo)</p>
+
+</div>
+</body>
+</html>
