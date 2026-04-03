@@ -76,6 +76,7 @@ Nommage	yyyymmdd Nom CR.docx ou yyyymmdd Nom Transcript.pdf
 
 
 User Stories
+
 🎙 Capture audio
 
 US-01 CORE ANDROID
@@ -101,7 +102,9 @@ Zone de texte éditable librement
 Bouton "Effacer" disponible
 Les boutons export s'activent dès qu'il y a du texte
 
+
 🤖 Structuration IA
+
 US-04 IA Structuration automatique du CR
 En tant qu'utilisateur, je veux que l'IA transforme ma transcription brute en compte rendu structuré et lisible.
 Sections : objet & contexte, participants, points abordés, décisions, actions (tableau Qui/Quoi/Quand), prochaine étape
