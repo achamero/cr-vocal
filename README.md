@@ -7,15 +7,21 @@ Application de compte rendu assistée par IA — Guide utilisateur
 ✍️ Conçu et réalisé par A. Cham
 🤖 IA : Groq (Llama 3.3 + Whisper)
 🌐 Chrome · Android · iOS · PC
+
+
 Guide utilisateur
+
 Présentation
 CR Vocal transforme un enregistrement audio ou une dictée en compte rendu structuré, prêt à exporter en Word ou PDF. L'application fonctionne entièrement dans le navigateur Chrome, sans installation.
 
 Prérequis : Chrome sur Android, iOS ou PC. Une connexion internet est nécessaire pour la transcription et la structuration IA.
+
 Workflow standard
+
 Renseigner les métadonnées
 Objet, date, durée, participants — tous les champs sont optionnels et seront déduits ou estimés automatiquement si laissés vides.
 Choisir la source audio
+
 Onglet
 🎙 Dictée micro
 pour dicter en temps réel, ou onglet
@@ -25,16 +31,19 @@ Obtenir la transcription
 En dictée : la transcription s'affiche en temps réel. Pour un fichier : cliquer sur
 Transcrire →
 . Vous pouvez aussi coller du texte directement dans le champ.
+
 Structurer avec l'IA
 Cliquer sur
 ✨ Structurer avec IA
 . L'IA organise la transcription en sections : objet, participants, points abordés, décisions, actions, prochaine étape.
+
 Exporter
 Boutons
 ⬇ Word
 et
 ⬇ PDF
 dans la barre du bas. Le fichier est nommé automatiquement : yyyymmdd Nom Réunion CR.docx
+
 Dictée micro
 Appuyer sur le bouton rouge pour démarrer, appuyer à nouveau pour arrêter. La transcription s'accumule en temps réel. L'écran reste allumé pendant l'enregistrement (Wake Lock).
 
@@ -44,6 +53,7 @@ Import fichier audio
 Glisser-déposer ou sélectionner un fichier. Les fichiers volumineux sont automatiquement découpés en segments de 10 Mo et transcrits séquentiellement. La progression est affichée.
 
 Quota Groq : La limite gratuite est de 120 minutes d'audio par heure. En cas de dépassement, l'application attend automatiquement le délai indiqué par Groq avant de reprendre.
+
 Modèle Word personnalisé
 Vous pouvez fournir un fichier .docx comme modèle de mise en forme. Insérez des balises {{...}} aux endroits où l'IA doit insérer du contenu :
 
@@ -58,6 +68,7 @@ Balise	Contenu inséré
 {{actions}}	Actions à mener (qui, quoi, quand)
 {{prochaine étape}}	Prochains jalons
 {{n'importe quelle balise}}	L'IA interprète et remplit intelligemment
+
 Sans modèle : L'IA utilise une structure standard avec sections fixes (objet, participants, points, décisions, actions, agenda).
 Clé IA gratuite
 L'application utilise par défaut une clé Groq partagée. Pour éviter les limites de quota ou utiliser votre propre compte :
@@ -66,6 +77,7 @@ Créer un compte gratuit sur console.groq.com
 Générer une clé API (API Keys → Create API Key)
 Coller la clé dans le champ 🔑 de l'application
 La clé est sauvegardée localement dans votre navigateur et n'est jamais transmise ailleurs que vers Groq directement.
+
 
 Propriétés des fichiers exportés
 Propriété	Valeur
