@@ -135,7 +135,7 @@
       <button class="rec-btn" id="recBtn" onclick="toggleRec()"><div class="dot"></div></button>
       <div class="rec-lbl" id="recLbl">Appuyer pour enregistrer</div>
       <div class="timer" id="timer"></div>
-      <div class="mic-note" style="font-size:11px">🔒 Écran maintenu allumé. Sur Android : tenez le téléphone stable, parlez distinctement à 20-30 cm, évitez le bruit de fond.</div>
+      <div class="mic-note" style="font-size:11px">🔒 Écran maintenu allumé pendant l'enregistrement.</div>
     </div>
   </div>
 
@@ -168,7 +168,7 @@
 
   <!-- Structuration IA -->
   <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.6">
-    Modèle Word optionnel avec balises <code style="background:var(--cream);padding:1px 5px;border-radius:4px;font-size:11px">{{sujet}}</code> — clé IA gratuite : <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent);text-decoration:none">console.groq.com</a> <span style="opacity:.6">(limite 120 min/heure)</span>
+    Modèle Word optionnel avec balises <code style="background:var(--cream);padding:1px 5px;border-radius:4px;font-size:11px">{{sujet}}</code> ou <code style="background:var(--cream);padding:1px 5px;border-radius:4px;font-size:11px">{{GROQ_KEYS: gsk_…, gsk_…}}</code> — clé IA gratuite : <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent);text-decoration:none">Groq</a> <span style="opacity:.6">(120 min/h)</span> · <a href="https://console.deepgram.com" target="_blank" style="color:var(--accent);text-decoration:none">Deepgram</a> <span style="opacity:.6">(200 h/mois)</span>
   </div>
   <div class="row" style="align-items:stretch;margin-bottom:16px">
     <button class="btn btn-dark" id="btnStruct" onclick="structurer()" style="flex:1.2;padding:9px 14px;font-size:13px">✨ Structurer avec IA</button>
@@ -188,6 +188,14 @@
           <input type="password" id="userGroqKey" placeholder="Clé IA gratuite (optionnel)" onclick="this.type='text'" onblur="this.type=this.value?'password':'text';saveUserKey()" style="flex:1;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:11px;background:transparent;color:var(--ink)">
         </div>
         <button onclick="clearUserKey()" id="btnClearKey" style="display:none;padding:5px 8px;border-radius:8px;border:1px solid var(--border);background:var(--cream);cursor:pointer;font-size:12px;color:var(--ink)">✕</button>
+      </div>
+      <!-- Clé Deepgram (fallback) -->
+      <div style="display:flex;gap:6px;align-items:center;flex:1">
+        <div style="flex:1;min-height:44px;display:flex;align-items:center;border:1px solid var(--border);border-radius:10px;background:white;padding:0 10px;gap:4px;cursor:text" onclick="document.getElementById('deepgramKey').focus()">
+          <span style="font-size:11px;color:var(--muted);white-space:nowrap">🔑</span>
+          <input type="password" id="deepgramKey" placeholder="Clé Deepgram (fallback 200h/mois)" onclick="this.type='text'" onblur="this.type=this.value?'password':'text';saveDeepgramKey()" style="flex:1;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:11px;background:transparent;color:var(--ink)">
+        </div>
+        <button onclick="clearDeepgramKey()" id="btnClearDeepgram" style="display:none;padding:5px 8px;border-radius:8px;border:1px solid var(--border);background:var(--cream);cursor:pointer;font-size:12px;color:var(--ink)">✕</button>
       </div>
     </div>
   </div>
@@ -213,35 +221,50 @@
 <script>
 window.addEventListener('load',()=>{
   document.getElementById('date').value=new Date().toISOString().split('T')[0];
-  // Restaurer clé Groq perso si sauvegardée
+  // Restaurer clé Groq perso
   const saved=localStorage.getItem('user_groq_key');
   if(saved){
     const el=document.getElementById('userGroqKey');
     el.value=saved; el.type='password';
     document.getElementById('btnClearKey').style.display='';
   }
+  // Restaurer clé Deepgram
+  const savedDg=localStorage.getItem('deepgram_key');
+  if(savedDg){
+    const el=document.getElementById('deepgramKey');
+    el.value=savedDg; el.type='password';
+    document.getElementById('btnClearDeepgram').style.display='';
+  }
+  buildKeyPool();
 });
 
 // ── Clé Groq utilisateur ──
 function saveUserKey(){
   const k=document.getElementById('userGroqKey').value.trim();
-  if(k){
-    localStorage.setItem('user_groq_key',k);
-    document.getElementById('btnClearKey').style.display='';
-  } else {
-    localStorage.removeItem('user_groq_key');
-    document.getElementById('btnClearKey').style.display='none';
-  }
+  if(k){ localStorage.setItem('user_groq_key',k); document.getElementById('btnClearKey').style.display=''; }
+  else { localStorage.removeItem('user_groq_key'); document.getElementById('btnClearKey').style.display='none'; }
+  buildKeyPool();
 }
 function clearUserKey(){
   localStorage.removeItem('user_groq_key');
   document.getElementById('userGroqKey').value='';
   document.getElementById('userGroqKey').type='text';
-  document.getElementById('userGroqKey').placeholder='🔑 Clé Groq personnelle (optionnel — cliquez pour coller)';
   document.getElementById('btnClearKey').style.display='none';
+  buildKeyPool();
 }
-// Retourne la clé à utiliser : perso si saisie, sinon clé serveur (variable env)
 function getUserKey(){ return localStorage.getItem('user_groq_key')||''; }
+
+function saveDeepgramKey(){
+  const k=document.getElementById('deepgramKey').value.trim();
+  if(k){ localStorage.setItem('deepgram_key',k); document.getElementById('btnClearDeepgram').style.display=''; }
+  else { localStorage.removeItem('deepgram_key'); document.getElementById('btnClearDeepgram').style.display='none'; }
+}
+function clearDeepgramKey(){
+  localStorage.removeItem('deepgram_key');
+  document.getElementById('deepgramKey').value='';
+  document.getElementById('deepgramKey').type='text';
+  document.getElementById('btnClearDeepgram').style.display='none';
+}
 
 // ── Helpers ──
 function toStr(val){
@@ -453,6 +476,8 @@ document.addEventListener('visibilitychange',async()=>{
   if(document.visibilityState==='visible'&&isRec&&!wakeLock) await requestWakeLock();
 });
 let modeleTexte=''; // Contenu extrait du modèle Word
+let groqKeyPool=[]; // Pool de clés Groq (clé perso + clés du modèle)
+let groqKeyIndex=0; // Index courant dans le pool
 
 // ── Modèle Word ──
 async function loadModele(e){
@@ -460,18 +485,61 @@ async function loadModele(e){
   if(!file) return;
   try{
     const arrayBuffer=await file.arrayBuffer();
-    // Extraire le HTML structuré (préserve h1/h2/h3, tableaux, listes)
     const result=await mammoth.convertToHtml({arrayBuffer});
-    // Convertir le HTML en texte structuré lisible par l'IA
-    modeleTexte=htmlToStructured(result.value).trim();
+    let structured=htmlToStructured(result.value).trim();
+
+    // Extraire les clés Groq embarquées dans le modèle
+    // Syntaxe : {{GROQ_KEYS: gsk_abc123, gsk_def456, gsk_ghi789}}
+    const keyMatch=structured.match(/\{\{GROQ_KEYS\s*:\s*([^}]+)\}\}/i);
+    if(keyMatch){
+      const keys=keyMatch[1].split(',').map(k=>k.trim()).filter(k=>k.startsWith('gsk_')||k.startsWith('sk-'));
+      if(keys.length){
+        // Stocker dans localStorage
+        localStorage.setItem('groq_key_pool', JSON.stringify(keys));
+        buildKeyPool();
+        showStatus(`✓ Modèle chargé — ${keys.length} clé${keys.length>1?'s':''} Groq détectée${keys.length>1?'s':''}.`,'ok');
+      }
+      // Retirer la balise du texte envoyé à l'IA
+      structured=structured.replace(/\{\{GROQ_KEYS\s*:[^}]+\}\}/gi,'').trim();
+    } else {
+      showStatus('✓ Modèle chargé — le CR suivra sa structure.','ok');
+    }
+
+    modeleTexte=structured;
     document.getElementById('modeleLabel').textContent=`✓ ${file.name}`;
     document.getElementById('modeleLabel').style.color='var(--ink)';
     document.getElementById('btnClearModele').style.display='';
-    showStatus('✓ Modèle chargé — le CR suivra sa structure.','ok');
   }catch(err){
     showStatus('Erreur lecture modèle : '+err.message,'err');
     modeleTexte='';
   }
+}
+
+// Construire le pool de clés : clé perso saisie + clés du modèle
+function buildKeyPool(){
+  const pool=[];
+  const userKey=localStorage.getItem('user_groq_key')||'';
+  if(userKey) pool.push({key:userKey, type:'perso'});
+  const poolStored=localStorage.getItem('groq_key_pool');
+  if(poolStored){
+    try{ JSON.parse(poolStored).forEach(k=>{ if(!pool.find(p=>p.key===k)) pool.push({key:k, type:'modele'}); }); }catch(e){}
+  }
+  groqKeyPool=pool;
+  groqKeyIndex=0;
+  return pool;
+}
+
+// Obtenir la prochaine clé disponible dans le pool
+function getNextKey(){
+  const pool=buildKeyPool();
+  if(!pool.length) return null;
+  return pool[groqKeyIndex % pool.length];
+}
+
+// Passer à la clé suivante (après un 429 ou erreur quota)
+function rotateKey(){
+  groqKeyIndex=(groqKeyIndex+1) % Math.max(groqKeyPool.length,1);
+  return groqKeyIndex < groqKeyPool.length ? groqKeyPool[groqKeyIndex] : null;
 }
 
 // Convertit le HTML mammoth en texte structuré avec marqueurs de niveau
@@ -604,42 +672,101 @@ async function transcribeAudio(){
   }
 }
 
-async function transcribeChunk(file, mt, filename){
-  // Appel direct à Groq depuis le navigateur (pas de timeout Cloudflare)
-  // Groq autorise CORS pour l'API audio
-  const userKey=getUserKey();
-  // Si pas de clé perso, passer par le serveur Cloudflare (qui a la clé env)
-  if(!userKey){
-    const reader=new FileReader();
-    const b64=await new Promise((res,rej)=>{reader.onload=e=>res(e.target.result.split(',')[1]);reader.onerror=rej;reader.readAsDataURL(file);});
-    const r=await fetch('/api/transcrire',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({base64:b64,mimeType:mt,filename})
-    });
-    const rawText=await r.text();
-    let d;try{d=JSON.parse(rawText);}catch(e){throw new Error('Réponse invalide ('+rawText.substring(0,300)+')');}
-    if(d.error) throw new Error(typeof d.error==='string'?d.error:(d.error.message||JSON.stringify(d.error)));
-    if(!d.text) throw new Error('Transcription vide');
-    return d.text;
-  }
-  // Avec clé perso : appel direct Groq (pas de limite de timeout)
-  const form=new FormData();
-  let safeFile=file;
+// ── Transcription Groq directe (avec clé) ──
+async function groqTranscribe(file, filename, apiKey){
   const ext=filename.split('.').pop().toLowerCase();
+  let safeFile=file;
   if(ext==='aac'||ext==='m4a'){
     safeFile=new File([file],filename.replace(/\.(aac|m4a)$/i,'.mp4'),{type:'audio/mp4'});
   }
+  const form=new FormData();
   form.append('file',safeFile,safeFile.name);
   form.append('model','whisper-large-v3-turbo');
   form.append('language','fr');
   form.append('response_format','json');
   const r=await fetch('https://api.groq.com/openai/v1/audio/transcriptions',{
+    method:'POST', headers:{'Authorization':`Bearer ${apiKey}`}, body:form
+  });
+  const raw=await r.text();
+  let d;try{d=JSON.parse(raw);}catch(e){throw new Error('Groq réponse invalide: '+raw.substring(0,150));}
+  if(d.error) throw new Error(d.error.message||JSON.stringify(d.error));
+  if(!d.text) throw new Error('Transcription Groq vide');
+  return d.text;
+}
+
+// ── Transcription Deepgram (fallback gratuit 200h/mois) ──
+async function deepgramTranscribe(file, filename){
+  const deepgramKey=localStorage.getItem('deepgram_key')||'';
+  if(!deepgramKey) throw new Error('Pas de clé Deepgram disponible');
+  const r=await fetch('https://api.deepgram.com/v1/listen?language=fr&model=nova-2&smart_format=true',{
     method:'POST',
-    headers:{'Authorization':`Bearer ${userKey}`},
-    body:form
+    headers:{'Authorization':`Token ${deepgramKey}`,'Content-Type':file.type||'audio/mpeg'},
+    body:file
+  });
+  const raw=await r.text();
+  let d;try{d=JSON.parse(raw);}catch(e){throw new Error('Deepgram réponse invalide');}
+  if(d.err_msg) throw new Error('Deepgram: '+d.err_msg);
+  const text=d.results?.channels?.[0]?.alternatives?.[0]?.transcript||'';
+  if(!text) throw new Error('Transcription Deepgram vide');
+  return text;
+}
+
+// ── transcribeChunk : rotation clés Groq + fallback Deepgram ──
+async function transcribeChunk(file, mt, filename){
+  const pool=buildKeyPool();
+
+  // Avec clé(s) disponible(s) : rotation automatique
+  if(pool.length>0){
+    let lastErr=null;
+    // Tenter chaque clé du pool
+    for(let attempt=0;attempt<pool.length;attempt++){
+      const keyEntry=pool[(groqKeyIndex+attempt)%pool.length];
+      try{
+        const text=await groqTranscribe(file,filename,keyEntry.key);
+        return text;
+      }catch(e){
+        const msg=e.message||'';
+        const isQuota=msg.includes('Rate limit')||msg.includes('rate_limit')||msg.includes('quota')||msg.includes('429');
+        if(isQuota){
+          showStatus(`⚠️ Quota clé ${attempt+1}/${pool.length} — rotation vers la suivante…`,'load');
+          groqKeyIndex=(groqKeyIndex+1)%pool.length;
+          lastErr=e;
+          await sleep(800);
+          continue;
+        }
+        // Erreur non-quota : attendre et réessayer avec même clé
+        const waitMatch=msg.match(/try again in\s+([\d.]+)([smh])/i);
+        if(waitMatch){
+          const val=parseFloat(waitMatch[1]);
+          const unit=waitMatch[2].toLowerCase();
+          const waitMs=unit==='h'?val*3600000:unit==='m'?val*60000:val*1000;
+          const waitSec=Math.ceil(waitMs/1000);
+          for(let w=waitSec;w>0;w--){
+            showStatus(`⏳ Attente quota ${w}s — clé ${(groqKeyIndex%pool.length)+1}/${pool.length}…`,'load');
+            await sleep(1000);
+          }
+          try{ return await groqTranscribe(file,filename,keyEntry.key); }catch(e2){ lastErr=e2; }
+        } else {
+          lastErr=e;
+        }
+      }
+    }
+    // Toutes les clés Groq épuisées → tenter Deepgram
+    showStatus('<span class="spin"></span>Toutes clés Groq épuisées — tentative Deepgram…','load');
+    try{ return await deepgramTranscribe(file,filename); }catch(de){
+      throw new Error(`Groq: ${lastErr?.message||'quota'} | Deepgram: ${de.message}`);
+    }
+  }
+
+  // Sans clé : passer par le serveur Cloudflare
+  const reader=new FileReader();
+  const b64=await new Promise((res,rej)=>{reader.onload=e=>res(e.target.result.split(',')[1]);reader.onerror=rej;reader.readAsDataURL(file);});
+  const r=await fetch('/api/transcrire',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({base64:b64,mimeType:mt,filename})
   });
   const rawText=await r.text();
-  let d;try{d=JSON.parse(rawText);}catch(e){throw new Error('Réponse Groq invalide ('+rawText.substring(0,200)+')');}
+  let d;try{d=JSON.parse(rawText);}catch(e){throw new Error('Réponse serveur invalide ('+rawText.substring(0,200)+')');}
   if(d.error) throw new Error(typeof d.error==='string'?d.error:(d.error.message||JSON.stringify(d.error)));
   if(!d.text) throw new Error('Transcription vide');
   return d.text;
